@@ -1,27 +1,11 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
 node_modules
 dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+dist-android
+release
+vendor
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Test coverage
-coverage
+# Android build outputs and machine-specific files are ignored by android/.gitignore.
+# The Android signing key lives in ~/.reacut-android, never in this repo.
+*.jks
+*.keystore
+keystore.properties

@@ -18,6 +18,6 @@ Closes #
 ## Checklist
 
 - [ ] I've read the [Contributing Guide](../CONTRIBUTING.md)
-- [ ] `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass locally
+- [ ] `npm run lint`, `npm run format:check`, `npm test` and `npm run build` pass locally
 - [ ] I've added or updated tests where it makes sense
 - [ ] I've updated docs / CHANGELOG if needed

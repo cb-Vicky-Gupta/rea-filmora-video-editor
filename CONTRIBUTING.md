@@ -1,4 +1,4 @@
-# Contributing to Rea Video Editor
+# Contributing to ReaCut
 
 Thanks for taking the time to contribute! 🎉 This guide explains how to get set up and how we work.
 
@@ -26,7 +26,7 @@ git remote add upstream https://github.com/cb-Vicky-Gupta/rea-filmora-video-edit
 # 3. Install dependencies (Node 20.19+; `nvm use` picks the right version)
 npm install
 
-# 4. Start the dev server
+# 4. Start the desktop app with hot reload (or `npm run dev:android` for the Android UI in a browser)
 npm run dev
 ```
 
@@ -39,11 +39,10 @@ npm run dev
    ```
    Branch prefixes: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`.
 2. Make your change. Keep pull requests focused — one feature or fix per PR.
-3. Add or update tests for logic changes (`*.test.ts` next to the source file).
+3. Add or update tests for logic changes (`*.test.mjs` / `*.test.js` next to the source file).
 4. Run the checks locally — CI runs the same ones:
    ```bash
    npm run lint
-   npm run typecheck
    npm test
    npm run format:check
    npm run build
@@ -70,10 +69,10 @@ Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore
 
 ## Code style
 
-- TypeScript strict mode; avoid `any`.
 - Function components and hooks only.
 - Formatting is handled by Prettier (`npm run format`) — don't hand-format.
-- Keep components small; put pure logic in plain `.ts` modules so it can be unit tested.
+- Timeline, color and export rules live in `shared/` and are used by both the preview and the export (desktop and Android); keep them pure so they can be unit tested, and change both sides together.
+- Platform code goes in `electron/` (desktop) or `src/platform/web/` (Android); the UI only talks to `window.api`.
 
 ## Reporting security issues
 

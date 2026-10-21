@@ -18,7 +18,7 @@ body:
       label: Steps to reproduce
       placeholder: |
         1. Import a video
-        2. Drag the Out slider to…
+        2. Add a transition between two clips
         3. Click Export
     validations:
       required: true
@@ -29,10 +29,10 @@ body:
     validations:
       required: true
   - type: input
-    id: browser
+    id: platform
     attributes:
-      label: Browser and version
-      placeholder: Chrome 130 on Windows 11
+      label: ReaCut version and platform
+      placeholder: ReaCut 0.1.0 on Windows 11 / macOS 15 (Apple Silicon) / Android 15 (Pixel 7)
     validations:
       required: true
   - type: input

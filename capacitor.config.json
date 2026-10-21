@@ -1,0 +1,8 @@
+{
+  "appId": "com.reacut.app",
+  "appName": "ReaCut",
+  "webDir": "dist-android",
+  "android": {
+    "allowMixedContent": false
+  }
+}
