@@ -33,7 +33,13 @@ function graphFor(el) {
   treble.type = 'highshelf';
   treble.frequency.value = 3000;
   const gain = ac.createGain();
-  src.connect(highpass).connect(bass).connect(mid).connect(treble).connect(gain).connect(ac.destination);
+  src
+    .connect(highpass)
+    .connect(bass)
+    .connect(mid)
+    .connect(treble)
+    .connect(gain)
+    .connect(ac.destination);
   g = { highpass, bass, mid, treble, gain };
   graphs.set(el, g);
   return g;
@@ -81,7 +87,9 @@ export class MediaPool {
     }
     for (const item of items) {
       if (assigned.has(item)) continue;
-      const slot = this.slots.find((s) => !used.has(s) && s.url === item.url && !items.some((i) => i.key === s.key));
+      const slot = this.slots.find(
+        (s) => !used.has(s) && s.url === item.url && !items.some((i) => i.key === s.key),
+      );
       if (slot) take(item, slot);
     }
     for (const item of items) {

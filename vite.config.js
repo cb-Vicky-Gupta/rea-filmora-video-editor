@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     transformIndexHtml: (html) =>
       html.replace(
         '<meta charset="UTF-8" />',
-        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${android ? CSP.android : CSP.desktop}" />`
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${android ? CSP.android : CSP.desktop}" />`,
       ),
   };
   return {

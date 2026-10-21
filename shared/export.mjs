@@ -2,11 +2,46 @@
 // export dialog (choices, size estimate) and the exporter (arguments).
 
 export const FORMATS = [
-  { id: 'mp4-h264', label: 'MP4 · H.264', ext: 'mp4', video: 'h264', audio: 'aac', note: 'Plays everywhere' },
-  { id: 'mp4-hevc', label: 'MP4 · H.265 / HEVC', ext: 'mp4', video: 'hevc', audio: 'aac', note: 'Smaller files, newer devices' },
-  { id: 'mov-prores', label: 'MOV · Apple ProRes 422', ext: 'mov', video: 'prores', audio: 'pcm', note: 'Editing / mastering, very large' },
-  { id: 'webm-vp9', label: 'WebM · VP9', ext: 'webm', video: 'vp9', audio: 'opus', note: 'For the web' },
-  { id: 'gif', label: 'Animated GIF', ext: 'gif', video: 'gif', audio: null, note: 'No sound, short clips' },
+  {
+    id: 'mp4-h264',
+    label: 'MP4 · H.264',
+    ext: 'mp4',
+    video: 'h264',
+    audio: 'aac',
+    note: 'Plays everywhere',
+  },
+  {
+    id: 'mp4-hevc',
+    label: 'MP4 · H.265 / HEVC',
+    ext: 'mp4',
+    video: 'hevc',
+    audio: 'aac',
+    note: 'Smaller files, newer devices',
+  },
+  {
+    id: 'mov-prores',
+    label: 'MOV · Apple ProRes 422',
+    ext: 'mov',
+    video: 'prores',
+    audio: 'pcm',
+    note: 'Editing / mastering, very large',
+  },
+  {
+    id: 'webm-vp9',
+    label: 'WebM · VP9',
+    ext: 'webm',
+    video: 'vp9',
+    audio: 'opus',
+    note: 'For the web',
+  },
+  {
+    id: 'gif',
+    label: 'Animated GIF',
+    ext: 'gif',
+    video: 'gif',
+    audio: null,
+    note: 'No sound, short clips',
+  },
   { id: 'mp3', label: 'MP3 (audio only)', ext: 'mp3', video: null, audio: 'mp3' },
   { id: 'm4a', label: 'M4A · AAC (audio only)', ext: 'm4a', video: null, audio: 'aac' },
   { id: 'wav', label: 'WAV (audio only)', ext: 'wav', video: null, audio: 'pcm' },
@@ -55,12 +90,81 @@ export function resolutionOptions(project) {
 // One-click presets (like Filmora's / Premiere's "Match source", "YouTube", ...).
 export const PRESETS = [
   { id: 'project', label: 'Match project', settings: {} },
-  { id: 'youtube-1080', label: 'YouTube 1080p', settings: { format: 'mp4-h264', width: 1920, height: 1080, rateMode: 'vbr', bitrate: 12000, audioBitrate: 320 } },
-  { id: 'youtube-4k', label: 'YouTube 4K', settings: { format: 'mp4-h264', width: 3840, height: 2160, rateMode: 'vbr', bitrate: 45000, audioBitrate: 320 } },
-  { id: 'reels', label: 'Instagram Reels / TikTok', settings: { format: 'mp4-h264', width: 1080, height: 1920, fps: 30, rateMode: 'vbr', bitrate: 8000, audioBitrate: 192 } },
-  { id: 'instagram-square', label: 'Instagram Feed (square)', settings: { format: 'mp4-h264', width: 1080, height: 1080, fps: 30, rateMode: 'vbr', bitrate: 6000, audioBitrate: 192 } },
-  { id: 'x', label: 'X / Twitter 720p', settings: { format: 'mp4-h264', width: 1280, height: 720, fps: 30, rateMode: 'vbr', bitrate: 5000, audioBitrate: 128 } },
-  { id: 'web-small', label: 'Small file (email, chat)', settings: { format: 'mp4-h264', width: 1280, height: 720, rateMode: 'crf', quality: 'low', audioBitrate: 128 } },
+  {
+    id: 'youtube-1080',
+    label: 'YouTube 1080p',
+    settings: {
+      format: 'mp4-h264',
+      width: 1920,
+      height: 1080,
+      rateMode: 'vbr',
+      bitrate: 12000,
+      audioBitrate: 320,
+    },
+  },
+  {
+    id: 'youtube-4k',
+    label: 'YouTube 4K',
+    settings: {
+      format: 'mp4-h264',
+      width: 3840,
+      height: 2160,
+      rateMode: 'vbr',
+      bitrate: 45000,
+      audioBitrate: 320,
+    },
+  },
+  {
+    id: 'reels',
+    label: 'Instagram Reels / TikTok',
+    settings: {
+      format: 'mp4-h264',
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      rateMode: 'vbr',
+      bitrate: 8000,
+      audioBitrate: 192,
+    },
+  },
+  {
+    id: 'instagram-square',
+    label: 'Instagram Feed (square)',
+    settings: {
+      format: 'mp4-h264',
+      width: 1080,
+      height: 1080,
+      fps: 30,
+      rateMode: 'vbr',
+      bitrate: 6000,
+      audioBitrate: 192,
+    },
+  },
+  {
+    id: 'x',
+    label: 'X / Twitter 720p',
+    settings: {
+      format: 'mp4-h264',
+      width: 1280,
+      height: 720,
+      fps: 30,
+      rateMode: 'vbr',
+      bitrate: 5000,
+      audioBitrate: 128,
+    },
+  },
+  {
+    id: 'web-small',
+    label: 'Small file (email, chat)',
+    settings: {
+      format: 'mp4-h264',
+      width: 1280,
+      height: 720,
+      rateMode: 'crf',
+      quality: 'low',
+      audioBitrate: 128,
+    },
+  },
   { id: 'master', label: 'Master (ProRes)', settings: { format: 'mov-prores', quality: 'high' } },
 ];
 
@@ -98,9 +202,14 @@ export function estimateSize(s, duration) {
   let videoKbps = 0;
   if (f.video === 'prores') {
     const level = QUALITY_LEVELS.findIndex((q) => q.id === s.quality);
-    videoKbps = PRORES_MBPS_1080P30[Math.max(0, level)] * 1000 * ((s.width * s.height) / (1920 * 1080)) * (s.fps / 30);
+    videoKbps =
+      PRORES_MBPS_1080P30[Math.max(0, level)] *
+      1000 *
+      ((s.width * s.height) / (1920 * 1080)) *
+      (s.fps / 30);
   } else if (f.video === 'gif') {
-    videoKbps = (Math.min(s.width, 640) * Math.min(s.height, 640) * Math.min(s.fps, 15) * 0.4) / 1000;
+    videoKbps =
+      (Math.min(s.width, 640) * Math.min(s.height, 640) * Math.min(s.fps, 15) * 0.4) / 1000;
   } else if (f.video) {
     videoKbps =
       s.rateMode === 'crf' && !s.hardware
@@ -108,7 +217,8 @@ export function estimateSize(s, duration) {
         : s.bitrate;
   }
   let audioKbps = 0;
-  if (s.audio && f.audio) audioKbps = f.audio === 'pcm' ? (s.sampleRate * 16 * s.channels) / 1000 : s.audioBitrate;
+  if (s.audio && f.audio)
+    audioKbps = f.audio === 'pcm' ? (s.sampleRate * 16 * s.channels) / 1000 : s.audioBitrate;
   return ((videoKbps + audioKbps) * 1000 * duration) / 8;
 }
 
@@ -118,8 +228,11 @@ export function formatBytes(b) {
   return `${(b / 1e9).toFixed(2)} GB`;
 }
 
+// Characters Windows and macOS don't allow in file names, plus control characters.
+// oxlint-disable-next-line no-control-regex
 const FORBIDDEN = /[<>:"/\\|?*\x00-\x1f]/g;
-export const sanitizeFileName = (name) => name.replace(FORBIDDEN, '').trim().replace(/\.+$/, '') || 'My Video';
+export const sanitizeFileName = (name) =>
+  name.replace(FORBIDDEN, '').trim().replace(/\.+$/, '') || 'My Video';
 
 // ffmpeg output arguments (codecs and rate control) for the chosen settings.
 export function encoderArgs(s, platform) {
@@ -131,29 +244,96 @@ export function encoderArgs(s, platform) {
   const hw = s.hardware && platform === 'darwin' && (f.video === 'h264' || f.video === 'hevc');
 
   const rate = () => {
-    if (s.rateMode === 'cbr') return ['-b:v', kbps(s.bitrate), '-minrate', kbps(s.bitrate), '-maxrate', kbps(s.bitrate), '-bufsize', kbps(s.bitrate)];
-    return ['-b:v', kbps(s.bitrate), '-maxrate', kbps(s.bitrate * 1.5), '-bufsize', kbps(s.bitrate * 2)];
+    if (s.rateMode === 'cbr')
+      return [
+        '-b:v',
+        kbps(s.bitrate),
+        '-minrate',
+        kbps(s.bitrate),
+        '-maxrate',
+        kbps(s.bitrate),
+        '-bufsize',
+        kbps(s.bitrate),
+      ];
+    return [
+      '-b:v',
+      kbps(s.bitrate),
+      '-maxrate',
+      kbps(s.bitrate * 1.5),
+      '-bufsize',
+      kbps(s.bitrate * 2),
+    ];
   };
 
   switch (f.video) {
     case 'h264':
-      if (hw) args.push('-c:v', 'h264_videotoolbox', '-profile:v', 'high', ...(s.rateMode === 'crf' ? ['-q:v', String(40 + q.prores * 15)] : rate()));
-      else args.push('-c:v', 'libx264', '-preset', speed.x264, '-profile:v', 'high', ...(s.rateMode === 'crf' ? ['-crf', String(q.crf.h264)] : rate()));
+      if (hw)
+        args.push(
+          '-c:v',
+          'h264_videotoolbox',
+          '-profile:v',
+          'high',
+          ...(s.rateMode === 'crf' ? ['-q:v', String(40 + q.prores * 15)] : rate()),
+        );
+      else
+        args.push(
+          '-c:v',
+          'libx264',
+          '-preset',
+          speed.x264,
+          '-profile:v',
+          'high',
+          ...(s.rateMode === 'crf' ? ['-crf', String(q.crf.h264)] : rate()),
+        );
       // True constant bitrate needs x264's HRD signalling (it pads to the target rate).
       if (!hw && s.rateMode === 'cbr') args.push('-x264-params', 'nal-hrd=cbr:force-cfr=1');
       args.push('-pix_fmt', 'yuv420p');
       break;
     case 'hevc':
-      if (hw) args.push('-c:v', 'hevc_videotoolbox', ...(s.rateMode === 'crf' ? ['-q:v', String(40 + q.prores * 15)] : rate()));
-      else args.push('-c:v', 'libx265', '-preset', speed.x264, ...(s.rateMode === 'crf' ? ['-crf', String(q.crf.hevc)] : rate()));
+      if (hw)
+        args.push(
+          '-c:v',
+          'hevc_videotoolbox',
+          ...(s.rateMode === 'crf' ? ['-q:v', String(40 + q.prores * 15)] : rate()),
+        );
+      else
+        args.push(
+          '-c:v',
+          'libx265',
+          '-preset',
+          speed.x264,
+          ...(s.rateMode === 'crf' ? ['-crf', String(q.crf.hevc)] : rate()),
+        );
       args.push('-tag:v', 'hvc1', '-pix_fmt', 'yuv420p');
       break;
     case 'prores':
-      args.push('-c:v', 'prores_ks', '-profile:v', String(q.prores), '-vendor', 'apl0', '-pix_fmt', 'yuv422p10le');
+      args.push(
+        '-c:v',
+        'prores_ks',
+        '-profile:v',
+        String(q.prores),
+        '-vendor',
+        'apl0',
+        '-pix_fmt',
+        'yuv422p10le',
+      );
       break;
     case 'vp9':
-      args.push('-c:v', 'libvpx-vp9', '-row-mt', '1', '-deadline', 'good', '-cpu-used', String(speed.vp9));
-      args.push(...(s.rateMode === 'crf' ? ['-crf', String(q.crf.vp9), '-b:v', '0'] : rate()), '-pix_fmt', 'yuv420p');
+      args.push(
+        '-c:v',
+        'libvpx-vp9',
+        '-row-mt',
+        '1',
+        '-deadline',
+        'good',
+        '-cpu-used',
+        String(speed.vp9),
+      );
+      args.push(
+        ...(s.rateMode === 'crf' ? ['-crf', String(q.crf.vp9), '-b:v', '0'] : rate()),
+        '-pix_fmt',
+        'yuv420p',
+      );
       break;
     case 'gif':
       args.push('-c:v', 'gif', '-loop', '0');

@@ -24,7 +24,6 @@ import {
 import { clipGrade, needsLut, bakeLut, lutToCube, parseCube } from './grade.mjs';
 import { defaultSettings, encoderArgs, formatById } from './export.mjs';
 
-
 // Border added around frames before `perspective`, which smears edge pixels outward.
 const PAD = 2;
 
@@ -43,7 +42,11 @@ function n(x) {
 }
 
 function num(x) {
-  return Number(x).toFixed(5).replace(/\.?0+$/, '') || '0';
+  return (
+    Number(x)
+      .toFixed(5)
+      .replace(/\.?0+$/, '') || '0'
+  );
 }
 
 // Piecewise keyframe interpolation as an ffmpeg expression of local time `tv`.
@@ -68,8 +71,14 @@ function animExpr(clip, prop, tv) {
   for (const { anim, duration, dir } of clipAnimations(clip)) {
     const from = animFrom(anim, prop, dir);
     if (from === undefined) continue;
-    const u = dir === 'in' ? `clip((${tv})/${num(duration)},0,1)` : `clip((${num(dur)}-(${tv}))/${num(duration)},0,1)`;
-    const e = anim.ease === 'back' ? `(1+2.70158*pow((${u})-1,3)+1.70158*pow((${u})-1,2))` : `(1-pow(1-(${u}),3))`;
+    const u =
+      dir === 'in'
+        ? `clip((${tv})/${num(duration)},0,1)`
+        : `clip((${num(dur)}-(${tv}))/${num(duration)},0,1)`;
+    const e =
+      anim.ease === 'back'
+        ? `(1+2.70158*pow((${u})-1,3)+1.70158*pow((${u})-1,2))`
+        : `(1-pow(1-(${u}),3))`;
     parts.push(`(${num(from)}+${num(REST[prop] - from)}*${e})`);
   }
   return parts;
@@ -80,7 +89,9 @@ function propExpr(clip, prop, tv) {
   const base = keyframeExpr(clip, prop, tv);
   const anim = animExpr(clip, prop, tv);
   if (!anim.length) return base;
-  return isAdditive(prop) ? [base, ...anim].map((p) => `(${p})`).join('+') : [base, ...anim].map((p) => `(${p})`).join('*');
+  return isAdditive(prop)
+    ? [base, ...anim].map((p) => `(${p})`).join('+')
+    : [base, ...anim].map((p) => `(${p})`).join('*');
 }
 
 // Position/scale/rotation: map the corners of the (padded) frame with `perspective`.
@@ -117,7 +128,9 @@ function opacityOverBlack(clip) {
 
 // Opacity of an overlay clip: scale its alpha channel.
 function opacityAlpha(clip) {
-  const animated = localKeyframes(clip, 'opacity') || clipAnimations(clip).some(({ anim }) => anim.props.opacity !== undefined);
+  const animated =
+    localKeyframes(clip, 'opacity') ||
+    clipAnimations(clip).some(({ anim }) => anim.props.opacity !== undefined);
   if (!animated) return `colorchannelmixer=aa=${num(staticValue(clip, 'opacity'))}`;
   const K = `clip(${propExpr(clip, 'opacity', 'T')},0,1)`;
   return `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='alpha(X,Y)*(${K})'`;
@@ -144,7 +157,9 @@ function checkMediaFiles(project, io) {
     for (const c of track.clips) {
       const media = project.media[c.mediaId];
       if (media && !io.exists(media.path)) {
-        throw new Error(`Media file not found: ${media.originalPath || media.path}\nRelink or remove "${media.name}" and try again.`);
+        throw new Error(
+          `Media file not found: ${media.originalPath || media.path}\nRelink or remove "${media.name}" and try again.`,
+        );
       }
     }
   }
@@ -162,7 +177,8 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
   checkMediaFiles(project, io);
   const wantVideo = !!format.video;
   const wantAudio = s.audio && !!format.audio;
-  if (!wantVideo && !wantAudio) throw new Error('Nothing to export: this format has no video and audio is turned off.');
+  if (!wantVideo && !wantAudio)
+    throw new Error('Nothing to export: this format has no video and audio is turned off.');
   const rangeStart = s.range === 'custom' ? Math.max(0, Math.min(s.rangeStart, total)) : 0;
   const rangeEnd = s.range === 'custom' ? Math.max(rangeStart, Math.min(s.rangeEnd, total)) : total;
   if (rangeEnd - rangeStart < 0.05) throw new Error('The export range is empty.');
@@ -200,7 +216,12 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
         : addInput(['-ss', n(c.in), '-t', n(len * speed), '-i', media.path]);
     const chain = [];
     if (media.kind !== 'image') chain.push(`setpts=(PTS-STARTPTS)/${num(speed)}`);
-    chain.push(`fps=${fps}`, `tpad=stop_mode=clone:stop_duration=${n(len)}`, `trim=duration=${n(len)}`, 'setpts=PTS-STARTPTS');
+    chain.push(
+      `fps=${fps}`,
+      `tpad=stop_mode=clone:stop_duration=${n(len)}`,
+      `trim=duration=${n(len)}`,
+      'setpts=PTS-STARTPTS',
+    );
     return { idx, chain };
   };
 
@@ -215,7 +236,12 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
   const fit = [`scale=${W}:${H}:force_original_aspect_ratio=decrease`];
 
   const wantsAudio = (track, c, media) =>
-    media.kind === 'video' && media.hasAudio && !track.muted && !c.muted && !c.audioDetached && c.volume > 0;
+    media.kind === 'video' &&
+    media.hasAudio &&
+    !track.muted &&
+    !c.muted &&
+    !c.audioDetached &&
+    c.volume > 0;
 
   // Builds the video graph and returns its output label. Also collects the audio of video clips.
   const buildVideo = () => {
@@ -230,7 +256,9 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       }
       const out = label('vj');
       if (tr) {
-        filters.push(`[${cur}][${lbl}]xfade=transition=${tr.type}:duration=${n(tr.duration)}:offset=${n(curLen - tr.duration)}[${out}]`);
+        filters.push(
+          `[${cur}][${lbl}]xfade=transition=${tr.type}:duration=${n(tr.duration)}:offset=${n(curLen - tr.duration)}[${out}]`,
+        );
         curLen += len - tr.duration;
       } else {
         filters.push(`[${cur}][${lbl}]concat=n=2:v=1:a=0[${out}]`);
@@ -238,7 +266,8 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       }
       cur = out;
     };
-    const blackSource = (dur) => `color=c=black:s=${W}x${H}:r=${fps}:d=${n(dur)},format=yuv420p,setsar=1,settb=AVTB`;
+    const blackSource = (dur) =>
+      `color=c=black:s=${W}x${H}:r=${fps}:d=${n(dur)},format=yuv420p,setsar=1,settb=AVTB`;
     const pushGap = (dur) => {
       const lbl = label('vs');
       filters.push(`${blackSource(dur)}[${lbl}]`);
@@ -247,7 +276,9 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
 
     const mainClips = mainTrack.hidden
       ? []
-      : [...mainTrack.clips].filter((c) => project.media[c.mediaId]).sort((a, b) => a.start - b.start);
+      : [...mainTrack.clips]
+          .filter((c) => project.media[c.mediaId])
+          .sort((a, b) => a.start - b.start);
     let cursor = 0;
     for (const c of mainClips) {
       const media = project.media[c.mediaId];
@@ -259,15 +290,22 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       const len = dur + ext;
       const { idx, chain } = openClip(c, media, len);
       chain.push(...gradeFilters(c));
-      if (clipGrade(c).vignette > 0) chain.push('format=rgb24', `vignette=angle=${vignetteAngle(c)}:dither=0`);
+      if (clipGrade(c).vignette > 0)
+        chain.push('format=rgb24', `vignette=angle=${vignetteAngle(c)}:dither=0`);
       // Transparent areas of images show black, like the preview.
       if (media.kind === 'image') chain.push('format=rgba', 'premultiply=inplace=1');
-      chain.push(...fit, `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black`, 'setsar=1', 'format=yuv420p');
+      chain.push(
+        ...fit,
+        `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black`,
+        'setsar=1',
+        'format=yuv420p',
+      );
       if (hasOpacity(c)) chain.push(opacityOverBlack(c));
       if (hasTransform(c)) chain.push(...transformFilters(c, W, H, fps, 'black'));
       const fades = effectiveFades(mainTrack, c);
       if (fades.fadeIn > 0) chain.push(`fade=t=in:st=0:d=${n(fades.fadeIn)}`);
-      if (fades.fadeOut > 0) chain.push(`fade=t=out:st=${n(Math.max(0, dur - fades.fadeOut))}:d=${n(fades.fadeOut)}`);
+      if (fades.fadeOut > 0)
+        chain.push(`fade=t=out:st=${n(Math.max(0, dur - fades.fadeOut))}:d=${n(fades.fadeOut)}`);
       chain.push('format=yuv420p', 'settb=AVTB');
 
       let lbl = label('vs');
@@ -278,7 +316,9 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
         const black = label('vb');
         const mixed = label('vf');
         filters.push(`${blackSource(tr.duration)}[${black}]`);
-        filters.push(`[${black}][${lbl}]xfade=transition=${tr.type}:duration=${n(tr.duration)}:offset=0[${mixed}]`);
+        filters.push(
+          `[${black}][${lbl}]xfade=transition=${tr.type}:duration=${n(tr.duration)}:offset=0[${mixed}]`,
+        );
         lbl = mixed;
       }
       append(lbl, len, tr?.prev ? tr : null);
@@ -304,16 +344,24 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
           const [a, b, al, v] = [label('oa'), label('ob'), label('oal'), label('ov')];
           filters.push(`${src},split[${a}][${b}]`);
           filters.push(`[${b}]alphaextract[${al}]`);
-          filters.push(`[${a}]format=rgb24,vignette=angle=${vignetteAngle(c)}:dither=0,format=rgba[${v}]`);
+          filters.push(
+            `[${a}]format=rgb24,vignette=angle=${vignetteAngle(c)}:dither=0,format=rgba[${v}]`,
+          );
           const merged = label('om');
           filters.push(`[${v}][${al}]alphamerge[${merged}]`);
           src = `[${merged}]null`;
         }
-        const post = [...fit, `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black@0`, 'setsar=1', 'format=rgba'];
+        const post = [
+          ...fit,
+          `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=black@0`,
+          'setsar=1',
+          'format=rgba',
+        ];
         if (hasOpacity(c)) post.push(opacityAlpha(c));
         if (hasTransform(c)) post.push(...transformFilters(c, W, H, fps, 'black@0'));
         if (c.fadeIn > 0) post.push(`fade=t=in:st=0:d=${n(c.fadeIn)}:alpha=1`);
-        if (c.fadeOut > 0) post.push(`fade=t=out:st=${n(Math.max(0, dur - c.fadeOut))}:d=${n(c.fadeOut)}:alpha=1`);
+        if (c.fadeOut > 0)
+          post.push(`fade=t=out:st=${n(Math.max(0, dur - c.fadeOut))}:d=${n(c.fadeOut)}:alpha=1`);
         post.push(`setpts=PTS-STARTPTS+${n(c.start)}/TB`);
         const ov = label('ovl');
         filters.push(`${src},${post.join(',')}[${ov}]`);
@@ -364,7 +412,14 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       for (const c of track.clips) {
         const media = project.media[c.mediaId];
         if (!media || !wantsAudio(track, c, media)) continue;
-        const idx = addInput(['-ss', n(c.in), '-t', n(clipDur(c) * clipSpeed(c)), '-i', media.path]);
+        const idx = addInput([
+          '-ss',
+          n(c.in),
+          '-t',
+          n(clipDur(c) * clipSpeed(c)),
+          '-i',
+          media.path,
+        ]);
         audioSources.push({ idx, clip: c });
       }
     }
@@ -379,7 +434,7 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
     filters.push(
       `[${vLabel}]fps=${Math.min(fps, 15)},split[g1][g2]`,
       `[g1]palettegen=stats_mode=diff[gp]`,
-      `[g2][gp]paletteuse=dither=bayer:bayer_scale=4[gif]`
+      `[g2][gp]paletteuse=dither=bayer:bayer_scale=4[gif]`,
     );
     vLabel = 'gif';
   }
@@ -390,7 +445,14 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       for (const c of track.clips) {
         const media = project.media[c.mediaId];
         if (!media || c.muted || c.volume <= 0 || !media.hasAudio) continue;
-        const idx = addInput(['-ss', n(c.in), '-t', n(clipDur(c) * clipSpeed(c)), '-i', media.path]);
+        const idx = addInput([
+          '-ss',
+          n(c.in),
+          '-t',
+          n(clipDur(c) * clipSpeed(c)),
+          '-i',
+          media.path,
+        ]);
         audioSources.push({ idx, clip: c });
       }
     }
@@ -413,13 +475,14 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       if (fx.treble) chain.push(`treble=g=${num(fx.treble)}:f=3000`);
       if (fx.denoise) chain.push('afftdn=nr=12:nf=-35');
       if (clip.fadeIn > 0) chain.push(`afade=t=in:st=0:d=${n(clip.fadeIn)}`);
-      if (clip.fadeOut > 0) chain.push(`afade=t=out:st=${n(Math.max(0, dur - clip.fadeOut))}:d=${n(clip.fadeOut)}`);
+      if (clip.fadeOut > 0)
+        chain.push(`afade=t=out:st=${n(Math.max(0, dur - clip.fadeOut))}:d=${n(clip.fadeOut)}`);
       chain.push(`adelay=${Math.round(clip.start * 1000)}:all=1`);
       filters.push(`[${idx}:a]${chain.join(',')}[as${i}]`);
       aLabels.push(`as${i}`);
     });
     filters.push(
-      `${aLabels.map((l) => `[${l}]`).join('')}amix=inputs=${aLabels.length}:duration=first:normalize=0[aout]`
+      `${aLabels.map((l) => `[${l}]`).join('')}amix=inputs=${aLabels.length}:duration=first:normalize=0[aout]`,
     );
   }
 
@@ -438,11 +501,12 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
     ...encoderArgs(s, io.platform),
     ...(wantVideo && format.video !== 'gif' ? ['-r', String(fps)] : []),
     ...(rangeStart > 0 ? ['-ss', n(rangeStart)] : []),
-    '-t', n(rangeEnd - rangeStart),
-    '-progress', 'pipe:1',
+    '-t',
+    n(rangeEnd - rangeStart),
+    '-progress',
+    'pipe:1',
     '-nostats',
     outPath,
   ];
   return { args, total: rangeEnd - rangeStart };
 }
-

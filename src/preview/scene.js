@@ -32,7 +32,9 @@ function visualLayer(project, track, clip, t, isMain) {
     src = Math.max(0, media.duration - 0.05);
     frozen = true;
   }
-  const fades = isMain ? effectiveFades(track, clip) : { fadeIn: clip.fadeIn, fadeOut: clip.fadeOut };
+  const fades = isMain
+    ? effectiveFades(track, clip)
+    : { fadeIn: clip.fadeIn, fadeOut: clip.fadeOut };
   const fade = local < dur ? fadeFactorAt(fades, dur, local) : 1;
   const props = layerProps(clip, Math.min(local, dur));
   return {
@@ -50,8 +52,18 @@ function visualLayer(project, track, clip, t, isMain) {
 function audioParams(clip, t, enabled) {
   if (!enabled || clip.muted) return null;
   const fx = clipAudio(clip);
-  const f = fadeFactorAt({ fadeIn: clip.fadeIn, fadeOut: clip.fadeOut }, clipDur(clip), t - clip.start);
-  return { gain: clip.volume * f, bass: fx.bass, mid: fx.mid, treble: fx.treble, highpass: fx.highpass };
+  const f = fadeFactorAt(
+    { fadeIn: clip.fadeIn, fadeOut: clip.fadeOut },
+    clipDur(clip),
+    t - clip.start,
+  );
+  return {
+    gain: clip.volume * f,
+    bass: fx.bass,
+    mid: fx.mid,
+    treble: fx.treble,
+    highpass: fx.highpass,
+  };
 }
 
 function nextClip(track, t) {
@@ -62,7 +74,14 @@ function nextClip(track, t) {
 
 export function buildScene(project, t) {
   const main = mainVideoTrack(project);
-  const scene = { current: null, prev: null, transition: null, overlays: [], videoItems: [], audioItems: [] };
+  const scene = {
+    current: null,
+    prev: null,
+    transition: null,
+    overlays: [],
+    videoItems: [],
+    audioItems: [],
+  };
 
   if (!main.hidden) {
     const cur = activeClip(main, t);
@@ -71,7 +90,10 @@ export function buildScene(project, t) {
       const tr = transitionInto(main, cur);
       if (tr && t < cur.start + tr.duration) {
         scene.prev = tr.prev && visualLayer(project, main, tr.prev, t, true);
-        scene.transition = { type: tr.type, progress: Math.max(0, Math.min(1, 1 - (t - cur.start) / tr.duration)) };
+        scene.transition = {
+          type: tr.type,
+          progress: Math.max(0, Math.min(1, 1 - (t - cur.start) / tr.duration)),
+        };
       }
     }
   }
@@ -85,7 +107,11 @@ export function buildScene(project, t) {
   const visual = [scene.current, scene.prev, ...scene.overlays].filter(Boolean);
   for (const layer of visual) {
     if (layer.media.kind !== 'video') continue;
-    const playsAudio = layer !== scene.prev && layer.media.hasAudio && !layer.clip.audioDetached && !layer.track.muted;
+    const playsAudio =
+      layer !== scene.prev &&
+      layer.media.hasAudio &&
+      !layer.clip.audioDetached &&
+      !layer.track.muted;
     scene.videoItems.push({
       key: layer.clip.id,
       url: playbackUrl(layer.media),
@@ -101,7 +127,12 @@ export function buildScene(project, t) {
     const upcoming = nextClip(track, t);
     const media = upcoming && project.media[upcoming.mediaId];
     if (media?.kind === 'video' && !media.missing) {
-      scene.videoItems.push({ key: upcoming.id, url: playbackUrl(media), src: upcoming.in, preload: true });
+      scene.videoItems.push({
+        key: upcoming.id,
+        url: playbackUrl(media),
+        src: upcoming.in,
+        preload: true,
+      });
     }
   }
 

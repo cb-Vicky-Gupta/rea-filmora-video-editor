@@ -39,7 +39,9 @@ function dragGeometry(drag, dx, zoom, others, media, snapPoints, magnetic) {
   const snapTol = SNAP_PX / zoom;
   const snap = (t) => {
     let best = null;
-    for (const p of snapPoints) if (Math.abs(p - t) < snapTol && (best === null || Math.abs(p - t) < Math.abs(best - t))) best = p;
+    for (const p of snapPoints)
+      if (Math.abs(p - t) < snapTol && (best === null || Math.abs(p - t) < Math.abs(best - t)))
+        best = p;
     return best;
   };
 
@@ -53,10 +55,14 @@ function dragGeometry(drag, dx, zoom, others, media, snapPoints, magnetic) {
     return { ...orig, start: findFreeStart(others, dur, Math.max(0, start)) };
   }
 
-  const prevEnd = others.filter((c) => c.start < orig.start).reduce((m, c) => Math.max(m, clipEnd(c)), 0);
+  const prevEnd = others
+    .filter((c) => c.start < orig.start)
+    .reduce((m, c) => Math.max(m, clipEnd(c)), 0);
   const nextStart = magnetic
     ? Infinity
-    : others.filter((c) => c.start >= orig.start + dur - EPS).reduce((m, c) => Math.min(m, c.start), Infinity);
+    : others
+        .filter((c) => c.start >= orig.start + dur - EPS)
+        .reduce((m, c) => Math.min(m, c.start), Infinity);
 
   if (mode === 'right') {
     let end = orig.start + dur + d;
@@ -98,7 +104,8 @@ function Ruler({ width, zoom }) {
 
 function TrackHeader({ project, track, dispatch }) {
   const isMain = track === mainVideoTrack(project);
-  const toggle = (key) => dispatch({ type: 'UPDATE_TRACK', trackId: track.id, patch: { [key]: !track[key] } });
+  const toggle = (key) =>
+    dispatch({ type: 'UPDATE_TRACK', trackId: track.id, patch: { [key]: !track[key] } });
   return (
     <div className="track-label sticky">
       <span className="track-name" title={isMain ? 'Main video track (transitions)' : track.name}>
@@ -107,17 +114,29 @@ function TrackHeader({ project, track, dispatch }) {
       </span>
       <span className="track-tools">
         {track.kind !== 'audio' && (
-          <button className={`icon ${track.hidden ? 'off' : ''}`} title={track.hidden ? 'Show track' : 'Hide track'} onClick={() => toggle('hidden')}>
+          <button
+            className={`icon ${track.hidden ? 'off' : ''}`}
+            title={track.hidden ? 'Show track' : 'Hide track'}
+            onClick={() => toggle('hidden')}
+          >
             {track.hidden ? '◌' : '◉'}
           </button>
         )}
         {track.kind !== 'text' && (
-          <button className={`icon ${track.muted ? 'off' : ''}`} title={track.muted ? 'Unmute track' : 'Mute track'} onClick={() => toggle('muted')}>
+          <button
+            className={`icon ${track.muted ? 'off' : ''}`}
+            title={track.muted ? 'Unmute track' : 'Mute track'}
+            onClick={() => toggle('muted')}
+          >
             {track.muted ? '🔇' : '🔊'}
           </button>
         )}
         {!isPermanentTrack(project, track) && (
-          <button className="icon danger-icon" title="Delete track and its clips" onClick={() => dispatch({ type: 'REMOVE_TRACK', trackId: track.id })}>
+          <button
+            className="icon danger-icon"
+            title="Delete track and its clips"
+            onClick={() => dispatch({ type: 'REMOVE_TRACK', trackId: track.id })}
+          >
             ✕
           </button>
         )}
@@ -196,7 +215,13 @@ export default function Timeline({
   useEffect(() => {
     if (!drag) return;
     const media = project.media[drag.orig.mediaId];
-    const snapPoints = [0, time, ...project.tracks.flatMap((t) => t.clips.filter((c) => c.id !== drag.clipId).flatMap((c) => [c.start, clipEnd(c)]))];
+    const snapPoints = [
+      0,
+      time,
+      ...project.tracks.flatMap((t) =>
+        t.clips.filter((c) => c.id !== drag.clipId).flatMap((c) => [c.start, clipEnd(c)]),
+      ),
+    ];
     const source = project.tracks.find((t) => t.id === drag.trackId);
 
     const trackUnder = (clientY) => {
@@ -204,7 +229,10 @@ export default function Timeline({
         const r = el.getBoundingClientRect();
         if (clientY >= r.top && clientY < r.bottom) {
           const t = project.tracks.find((k) => k.id === id);
-          const ok = source.kind === 'text' ? t === source : t?.kind === source.kind && trackAccepts(t, media);
+          const ok =
+            source.kind === 'text'
+              ? t === source
+              : t?.kind === source.kind && trackAccepts(t, media);
           return ok ? t : null;
         }
       }
@@ -213,7 +241,10 @@ export default function Timeline({
 
     const move = (e) => {
       const d = dragRef.current;
-      const target = d.mode === 'move' ? trackUnder(e.clientY) || project.tracks.find((t) => t.id === d.trackId) : source;
+      const target =
+        d.mode === 'move'
+          ? trackUnder(e.clientY) || project.tracks.find((t) => t.id === d.trackId)
+          : source;
       const others = target.clips.filter((c) => c.id !== d.clipId);
       const magnetic = !!project.settings.magnet && target === mainVideoTrack(project);
       const geo = dragGeometry(d, e.clientX - d.startX, zoom, others, media, snapPoints, magnetic);
@@ -226,7 +257,8 @@ export default function Timeline({
       if (d?.moved) {
         const { start, in: inPoint, out } = d.current;
         const patch = { start, in: inPoint, out };
-        if (d.trackId !== source.id) dispatch({ type: 'MOVE_CLIP', clipId: d.clipId, trackId: d.trackId, patch });
+        if (d.trackId !== source.id)
+          dispatch({ type: 'MOVE_CLIP', clipId: d.clipId, trackId: d.trackId, patch });
         else dispatch({ type: 'UPDATE_CLIP', clipId: d.clipId, patch });
       }
       dragRef.current = null;
@@ -252,7 +284,15 @@ export default function Timeline({
     let mode = 'move';
     if (x < HANDLE_PX) mode = 'left';
     else if (x > rect.width - HANDLE_PX) mode = 'right';
-    dragRef.current = { clipId: clip.id, trackId: track.id, mode, startX: e.clientX, orig: clip, current: clip, moved: false };
+    dragRef.current = {
+      clipId: clip.id,
+      trackId: track.id,
+      mode,
+      startX: e.clientX,
+      orig: clip,
+      current: clip,
+      moved: false,
+    };
     setDrag(dragRef.current);
   };
 
@@ -277,7 +317,17 @@ export default function Timeline({
     if (look && track.kind === 'video') {
       e.preventDefault();
       e.stopPropagation();
-      dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch: { grade: { ...look.grade, lut: clip.grade?.lut ?? null, lutIntensity: clip.grade?.lutIntensity ?? 1 } } });
+      dispatch({
+        type: 'UPDATE_CLIP',
+        clipId: clip.id,
+        patch: {
+          grade: {
+            ...look.grade,
+            lut: clip.grade?.lut ?? null,
+            lutIntensity: clip.grade?.lutIntensity ?? 1,
+          },
+        },
+      });
       setSelectedId(clip.id);
       onOpenTab('color');
       return;
@@ -287,11 +337,16 @@ export default function Timeline({
     e.preventDefault();
     e.stopPropagation();
     if (track !== mainTrack) return;
-    dispatch({ type: 'SET_TRANSITION', clipId: clip.id, transition: { type, duration: clip.transition?.duration || DEFAULT_TRANSITION_DURATION } });
+    dispatch({
+      type: 'SET_TRANSITION',
+      clipId: clip.id,
+      transition: { type, duration: clip.transition?.duration || DEFAULT_TRANSITION_DURATION },
+    });
     selectTransition(clip);
   };
 
-  const selectedClip = selectedId && project.tracks.flatMap((t) => t.clips).find((c) => c.id === selectedId);
+  const selectedClip =
+    selectedId && project.tracks.flatMap((t) => t.clips).find((c) => c.id === selectedId);
   const selectedMedia = selectedClip && project.media[selectedClip.mediaId];
   const canDetach =
     selectedMedia?.hasAudio &&
@@ -300,8 +355,11 @@ export default function Timeline({
 
   // Clips shown in each row; a clip being dragged to another track is drawn in that track.
   const rowClips = (track) => {
-    const clips = track.clips.filter((c) => !(drag?.moved && c.id === drag.clipId && drag.trackId !== track.id));
-    if (drag?.moved && drag.trackId === track.id && !clips.some((c) => c.id === drag.clipId)) clips.push(drag.orig);
+    const clips = track.clips.filter(
+      (c) => !(drag?.moved && c.id === drag.clipId && drag.trackId !== track.id),
+    );
+    if (drag?.moved && drag.trackId === track.id && !clips.some((c) => c.id === drag.clipId))
+      clips.push(drag.orig);
     return clips;
   };
 
@@ -311,10 +369,17 @@ export default function Timeline({
         <button onClick={onSplit} title="Split at playhead (S)">
           ✂ Split
         </button>
-        <button onClick={onDelete} disabled={!selectedId} title={selectedTransition ? 'Remove transition (⌫)' : 'Delete clip (⌫)'}>
+        <button
+          onClick={onDelete}
+          disabled={!selectedId}
+          title={selectedTransition ? 'Remove transition (⌫)' : 'Delete clip (⌫)'}
+        >
           🗑 {selectedTransition ? 'Remove transition' : 'Delete'}
         </button>
-        <button onClick={() => dispatch({ type: 'ADD_TITLE', start: time })} title="Add a title at the playhead">
+        <button
+          onClick={() => dispatch({ type: 'ADD_TITLE', start: time })}
+          title="Add a title at the playhead"
+        >
           T+ Title
         </button>
         <button
@@ -327,7 +392,9 @@ export default function Timeline({
         <span className="divider" />
         <button
           className={`toggle ${project.settings.magnet ? 'on' : ''}`}
-          onClick={() => dispatch({ type: 'SET_SETTINGS', patch: { magnet: !project.settings.magnet } })}
+          onClick={() =>
+            dispatch({ type: 'SET_SETTINGS', patch: { magnet: !project.settings.magnet } })
+          }
           title={
             project.settings.magnet
               ? 'Magnet on: the main track closes gaps automatically when you delete, cut or trim. Click to turn off.'
@@ -337,7 +404,10 @@ export default function Timeline({
           🧲 Magnet
         </button>
         <span className="divider" />
-        <button onClick={() => dispatch({ type: 'ADD_VIDEO_TRACK' })} title="Add a video track above the others (picture in picture, overlays)">
+        <button
+          onClick={() => dispatch({ type: 'ADD_VIDEO_TRACK' })}
+          title="Add a video track above the others (picture in picture, overlays)"
+        >
           + Video track
         </button>
         <button onClick={() => dispatch({ type: 'ADD_AUDIO_TRACK' })} title="Add an audio track">
@@ -345,12 +415,27 @@ export default function Timeline({
         </button>
         <div className="spacer" />
         <span className="muted small">Zoom</span>
-        <input type="range" min="10" max="300" value={zoom} onChange={(e) => setZoom(+e.target.value)} />
+        <input
+          type="range"
+          min="10"
+          max="300"
+          value={zoom}
+          onChange={(e) => setZoom(+e.target.value)}
+        />
       </div>
 
       <div className="timeline-scroll" ref={scrollRef}>
-        <div className="timeline-content" style={{ width: contentWidth + LABEL_WIDTH, '--label-w': `${LABEL_WIDTH}px` }}>
-          <div className="ruler-row" onPointerDown={(e) => { setTime(timeAt(e.clientX)); setScrubbing(true); }}>
+        <div
+          className="timeline-content"
+          style={{ width: contentWidth + LABEL_WIDTH, '--label-w': `${LABEL_WIDTH}px` }}
+        >
+          <div
+            className="ruler-row"
+            onPointerDown={(e) => {
+              setTime(timeAt(e.clientX));
+              setScrubbing(true);
+            }}
+          >
             <div className="track-label sticky" />
             <Ruler width={contentWidth} zoom={zoom} />
           </div>
@@ -359,7 +444,9 @@ export default function Timeline({
             <div
               key={track.id}
               className={`track-row kind-${track.kind} ${track.hidden ? 'is-hidden' : ''} ${track.muted ? 'is-muted' : ''}`}
-              ref={(el) => (el ? rowRefs.current.set(track.id, el) : rowRefs.current.delete(track.id))}
+              ref={(el) =>
+                el ? rowRefs.current.set(track.id, el) : rowRefs.current.delete(track.id)
+              }
             >
               <TrackHeader project={project} track={track} dispatch={dispatch} />
               <div
@@ -399,7 +486,16 @@ export default function Timeline({
                   const speed = clipSpeed(c);
                   const showWave = track.kind === 'audio' && media?.waveform;
                   const tr = track === mainTrack && !drag && transitionInto(track, clip);
-                  const keyTimes = track.kind === 'video' ? [...new Set(['x', 'y', 'scale', 'rotation', 'opacity'].flatMap((p) => (localKeyframes(c, p) || []).map((k) => k.local.toFixed(3))))] : [];
+                  const keyTimes =
+                    track.kind === 'video'
+                      ? [
+                          ...new Set(
+                            ['x', 'y', 'scale', 'rotation', 'opacity'].flatMap((p) =>
+                              (localKeyframes(c, p) || []).map((k) => k.local.toFixed(3)),
+                            ),
+                          ),
+                        ]
+                      : [];
                   return (
                     <div
                       key={clip.id}
@@ -421,7 +517,10 @@ export default function Timeline({
                       onPointerDown={(e) => startClipDrag(e, track, clip)}
                       onDragOver={(e) => {
                         const types = e.dataTransfer.types;
-                        if ((track === mainTrack && types.includes(TRANSITION_DRAG_TYPE)) || (track.kind === 'video' && types.includes(LOOK_DRAG_TYPE))) {
+                        if (
+                          (track === mainTrack && types.includes(TRANSITION_DRAG_TYPE)) ||
+                          (track.kind === 'video' && types.includes(LOOK_DRAG_TYPE))
+                        ) {
                           e.preventDefault();
                           e.stopPropagation();
                         }
@@ -429,10 +528,19 @@ export default function Timeline({
                       onDrop={(e) => dropOnClip(e, track, clip)}
                       title={`${label}${media?.missing ? ' (file missing)' : ''}\n${formatTime(c.start)} – ${formatTime(clipEnd(c))}`}
                     >
-                      {c.fadeIn > 0 && <div className="fade fade-in" style={{ width: c.fadeIn * zoom }} />}
-                      {c.fadeOut > 0 && <div className="fade fade-out" style={{ width: c.fadeOut * zoom }} />}
+                      {c.fadeIn > 0 && (
+                        <div className="fade fade-in" style={{ width: c.fadeIn * zoom }} />
+                      )}
+                      {c.fadeOut > 0 && (
+                        <div className="fade fade-out" style={{ width: c.fadeOut * zoom }} />
+                      )}
                       {clipAnimations(c).map(({ dir, duration: d, anim }) => (
-                        <div key={dir} className={`anim-mark anim-${dir}`} style={{ width: d * zoom }} title={`${dir === 'in' ? 'In' : 'Out'}: ${anim.name}`} />
+                        <div
+                          key={dir}
+                          className={`anim-mark anim-${dir}`}
+                          style={{ width: d * zoom }}
+                          title={`${dir === 'in' ? 'In' : 'Out'}: ${anim.name}`}
+                        />
                       ))}
                       {tr && (
                         <div
@@ -451,7 +559,11 @@ export default function Timeline({
                               title="Remove transition"
                               onPointerDown={(e) => {
                                 e.stopPropagation();
-                                dispatch({ type: 'SET_TRANSITION', clipId: clip.id, transition: null });
+                                dispatch({
+                                  type: 'SET_TRANSITION',
+                                  clipId: clip.id,
+                                  transition: null,
+                                });
                                 setSelectedTransition(null);
                               }}
                             >

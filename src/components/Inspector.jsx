@@ -93,17 +93,31 @@ function KeyframeRow({ prop, clip, time, setTime, dispatch, fps }) {
     if (animated) {
       if (inClip) dispatch({ type: 'SET_KEYFRAME', clipId: clip.id, prop, t: src, v });
     } else {
-      dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch: { transform: { ...clip.transform, [prop]: v } } });
+      dispatch({
+        type: 'UPDATE_CLIP',
+        clipId: clip.id,
+        patch: { transform: { ...clip.transform, [prop]: v } },
+      });
     }
   };
-  const fmt = prop === 'rotation' ? (v) => `${Math.round(v)}°` : prop === 'x' || prop === 'y' ? (v) => `${Math.round((v - 0.5) * 100)}` : pct;
+  const fmt =
+    prop === 'rotation'
+      ? (v) => `${Math.round(v)}°`
+      : prop === 'x' || prop === 'y'
+        ? (v) => `${Math.round((v - 0.5) * 100)}`
+        : pct;
 
   return (
     <div className="kf-row">
       <div className="kf-head">
         <span>{spec.label}</span>
         <div className="kf-buttons">
-          <button className="icon" disabled={!prev} onClick={() => setTime(clip.start + prev.local)} title="Previous keyframe">
+          <button
+            className="icon"
+            disabled={!prev}
+            onClick={() => setTime(clip.start + prev.local)}
+            title="Previous keyframe"
+          >
             ◀
           </button>
           <button
@@ -118,14 +132,28 @@ function KeyframeRow({ prop, clip, time, setTime, dispatch, fps }) {
           >
             ◆
           </button>
-          <button className="icon" disabled={!next} onClick={() => setTime(clip.start + next.local)} title="Next keyframe">
+          <button
+            className="icon"
+            disabled={!next}
+            onClick={() => setTime(clip.start + next.local)}
+            title="Next keyframe"
+          >
             ▶
           </button>
           {here && (
             <select
               className="ease"
               value={here.ease || 'linear'}
-              onChange={(e) => dispatch({ type: 'SET_KEYFRAME', clipId: clip.id, prop, t: here.t, v: here.v, ease: e.target.value })}
+              onChange={(e) =>
+                dispatch({
+                  type: 'SET_KEYFRAME',
+                  clipId: clip.id,
+                  prop,
+                  t: here.t,
+                  v: here.v,
+                  ease: e.target.value,
+                })
+              }
               title="Interpolation to the next keyframe"
             >
               <option value="linear">Linear</option>
@@ -143,7 +171,15 @@ function KeyframeRow({ prop, clip, time, setTime, dispatch, fps }) {
           )}
         </div>
       </div>
-      <Slider value={value} min={spec.min} max={spec.max} step={spec.step} onChange={setValue} format={fmt} disabled={animated && !inClip} />
+      <Slider
+        value={value}
+        min={spec.min}
+        max={spec.max}
+        step={spec.step}
+        onChange={setValue}
+        format={fmt}
+        disabled={animated && !inClip}
+      />
     </div>
   );
 }
@@ -186,7 +222,12 @@ function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
               <button
                 key={p.name}
                 className="chip"
-                onClick={() => update({ transform: { ...clip.transform, ...p.transform }, keyframes: { ...clip.keyframes, x: [], y: [], scale: [] } })}
+                onClick={() =>
+                  update({
+                    transform: { ...clip.transform, ...p.transform },
+                    keyframes: { ...clip.keyframes, x: [], y: [], scale: [] },
+                  })
+                }
               >
                 {p.name}
               </button>
@@ -195,10 +236,19 @@ function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
         </>
       )}
       <div className="hint small">
-        Click ◆ to keyframe a property. Once a property has keyframes, moving its slider sets a keyframe at the playhead.
+        Click ◆ to keyframe a property. Once a property has keyframes, moving its slider sets a
+        keyframe at the playhead.
       </div>
       {Object.keys(TRANSFORM_PROPS).map((prop) => (
-        <KeyframeRow key={prop} prop={prop} clip={clip} time={time} setTime={setTime} dispatch={dispatch} fps={project.settings.fps} />
+        <KeyframeRow
+          key={prop}
+          prop={prop}
+          clip={clip}
+          time={time}
+          setTime={setTime}
+          dispatch={dispatch}
+          fps={project.settings.fps}
+        />
       ))}
 
       {media?.kind === 'video' && (
@@ -216,7 +266,11 @@ function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
           </Field>
           <div className="chip-row">
             {[0.25, 0.5, 1, 1.5, 2, 4].map((s) => (
-              <button key={s} className={`chip ${Math.abs(s - speed) < 0.001 ? 'active' : ''}`} onClick={() => dispatch({ type: 'SET_SPEED', clipId: clip.id, speed: s })}>
+              <button
+                key={s}
+                className={`chip ${Math.abs(s - speed) < 0.001 ? 'active' : ''}`}
+                onClick={() => dispatch({ type: 'SET_SPEED', clipId: clip.id, speed: s })}
+              >
                 {s}×
               </button>
             ))}
@@ -227,14 +281,35 @@ function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
       <div className="section-title">Timing</div>
       {media?.kind === 'image' && (
         <Field label="Duration">
-          <Slider value={dur} min={0.5} max={60} step={0.1} onChange={(v) => update({ in: 0, out: v })} format={secs} />
+          <Slider
+            value={dur}
+            min={0.5}
+            max={60}
+            step={0.1}
+            onChange={(v) => update({ in: 0, out: v })}
+            format={secs}
+          />
         </Field>
       )}
       <Field label="Fade in">
-        <Slider value={Math.min(clip.fadeIn, maxFade)} min={0} max={maxFade} step={0.1} onChange={(v) => update({ fadeIn: v })} format={secs} />
+        <Slider
+          value={Math.min(clip.fadeIn, maxFade)}
+          min={0}
+          max={maxFade}
+          step={0.1}
+          onChange={(v) => update({ fadeIn: v })}
+          format={secs}
+        />
       </Field>
       <Field label="Fade out">
-        <Slider value={Math.min(clip.fadeOut, maxFade)} min={0} max={maxFade} step={0.1} onChange={(v) => update({ fadeOut: v })} format={secs} />
+        <Slider
+          value={Math.min(clip.fadeOut, maxFade)}
+          min={0}
+          max={maxFade}
+          step={0.1}
+          onChange={(v) => update({ fadeOut: v })}
+          format={secs}
+        />
       </Field>
       {track.kind === 'video' && transitionInto(track, clip) && clip.fadeIn > 0 && (
         <div className="hint small">Fade in is skipped because this clip has a transition.</div>
@@ -275,7 +350,9 @@ export function LookSwatch({ thumb, grade }) {
         if (grade.vignette > 0) {
           const px = (i / 4) % SWATCH_W;
           const py = Math.floor(i / 4 / SWATCH_W);
-          const dn = Math.hypot(px - SWATCH_W / 2, py - SWATCH_H / 2) / Math.hypot(SWATCH_W / 2, SWATCH_H / 2);
+          const dn =
+            Math.hypot(px - SWATCH_W / 2, py - SWATCH_H / 2) /
+            Math.hypot(SWATCH_W / 2, SWATCH_H / 2);
           const c = Math.cos((grade.vignette * Math.PI * dn) / 2) ** 4;
           r *= c;
           g *= c;
@@ -297,15 +374,25 @@ export function LookSwatch({ thumb, grade }) {
   return <canvas ref={ref} width={SWATCH_W} height={SWATCH_H} className="preset-swatch" />;
 }
 
-const sameGrade = (a, b) => JSON.stringify({ ...a, lut: null, lutIntensity: 1 }) === JSON.stringify({ ...b, lut: null, lutIntensity: 1 });
+const sameGrade = (a, b) =>
+  JSON.stringify({ ...a, lut: null, lutIntensity: 1 }) ===
+  JSON.stringify({ ...b, lut: null, lutIntensity: 1 });
 
 function ColorTab({ clip, media, dispatch, notify }) {
   const grade = clipGrade(clip);
-  const set = (patch) => dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch: { grade: { ...grade, ...patch } } });
+  const set = (patch) =>
+    dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch: { grade: { ...grade, ...patch } } });
   const activeLook = LOOKS.find((l) => sameGrade(l.grade, grade));
   const slider = (key, label, min, max, step, format = signed) => (
     <Field label={label} key={key}>
-      <Slider value={grade[key]} min={min} max={max} step={step} onChange={(v) => set({ [key]: v })} format={format} />
+      <Slider
+        value={grade[key]}
+        min={min}
+        max={max}
+        step={step}
+        onChange={(v) => set({ [key]: v })}
+        format={format}
+      />
     </Field>
   );
 
@@ -316,7 +403,9 @@ function ColorTab({ clip, media, dispatch, notify }) {
       parseCube(await window.api.readLut(lut.path));
       set({ lut, lutIntensity: 1 });
     } catch (e) {
-      notify(`Could not load LUT: ${String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`);
+      notify(
+        `Could not load LUT: ${String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`,
+      );
     }
   };
 
@@ -339,7 +428,11 @@ function ColorTab({ clip, media, dispatch, notify }) {
 
       <div className="section-title">
         Light
-        <button className="link" onClick={() => set(DEFAULT_GRADE)} disabled={sameGrade(grade, DEFAULT_GRADE) && !grade.lut}>
+        <button
+          className="link"
+          onClick={() => set(DEFAULT_GRADE)}
+          disabled={sameGrade(grade, DEFAULT_GRADE) && !grade.lut}
+        >
           Reset all
         </button>
       </div>
@@ -378,7 +471,14 @@ function ColorTab({ clip, media, dispatch, notify }) {
             </div>
           </Field>
           <Field label={`${label} amount`}>
-            <Slider value={grade[key].amount} min={0} max={1} step={0.01} onChange={(v) => set({ [key]: { ...grade[key], amount: v } })} format={pct} />
+            <Slider
+              value={grade[key].amount}
+              min={0}
+              max={1}
+              step={0.01}
+              onChange={(v) => set({ [key]: { ...grade[key], amount: v } })}
+              format={pct}
+            />
           </Field>
         </div>
       ))}
@@ -407,7 +507,9 @@ function ColorTab({ clip, media, dispatch, notify }) {
         <div className="hint small">Apply any 3D LUT (.cube) from a colorist or camera maker.</div>
       )}
 
-      <button onClick={() => dispatch({ type: 'APPLY_GRADE_ALL', grade })}>Apply this grade to all video clips</button>
+      <button onClick={() => dispatch({ type: 'APPLY_GRADE_ALL', grade })}>
+        Apply this grade to all video clips
+      </button>
     </>
   );
 }
@@ -423,25 +525,52 @@ function AudioTab({ clip, media, track, dispatch }) {
   const isVideoTrack = track.kind === 'video';
 
   if (isVideoTrack && clip.audioDetached) {
-    return <div className="hint">This clip's audio was detached to an audio track. Edit it there.</div>;
+    return (
+      <div className="hint">This clip's audio was detached to an audio track. Edit it there.</div>
+    );
   }
 
   return (
     <>
       <Field label="Volume">
-        <Slider value={clip.volume} min={0} max={2} step={0.05} onChange={(v) => update({ volume: v })} format={pct} />
+        <Slider
+          value={clip.volume}
+          min={0}
+          max={2}
+          step={0.05}
+          onChange={(v) => update({ volume: v })}
+          format={pct}
+        />
       </Field>
       <label className="check">
-        <input type="checkbox" checked={clip.muted} onChange={(e) => update({ muted: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={clip.muted}
+          onChange={(e) => update({ muted: e.target.checked })}
+        />
         Mute
       </label>
       {!isVideoTrack && (
         <>
           <Field label="Fade in">
-            <Slider value={Math.min(clip.fadeIn, maxFade)} min={0} max={maxFade} step={0.1} onChange={(v) => update({ fadeIn: v })} format={secs} />
+            <Slider
+              value={Math.min(clip.fadeIn, maxFade)}
+              min={0}
+              max={maxFade}
+              step={0.1}
+              onChange={(v) => update({ fadeIn: v })}
+              format={secs}
+            />
           </Field>
           <Field label="Fade out">
-            <Slider value={Math.min(clip.fadeOut, maxFade)} min={0} max={maxFade} step={0.1} onChange={(v) => update({ fadeOut: v })} format={secs} />
+            <Slider
+              value={Math.min(clip.fadeOut, maxFade)}
+              min={0}
+              max={maxFade}
+              step={0.1}
+              onChange={(v) => update({ fadeOut: v })}
+              format={secs}
+            />
           </Field>
           <Field label="Speed">
             <Slider
@@ -469,28 +598,59 @@ function AudioTab({ clip, media, track, dispatch }) {
         ))}
       </div>
       <Field label="Bass (100 Hz)">
-        <Slider value={fx.bass} min={-12} max={12} step={0.5} onChange={(v) => setFx({ bass: v })} format={db} />
+        <Slider
+          value={fx.bass}
+          min={-12}
+          max={12}
+          step={0.5}
+          onChange={(v) => setFx({ bass: v })}
+          format={db}
+        />
       </Field>
       <Field label="Mid (1 kHz)">
-        <Slider value={fx.mid} min={-12} max={12} step={0.5} onChange={(v) => setFx({ mid: v })} format={db} />
+        <Slider
+          value={fx.mid}
+          min={-12}
+          max={12}
+          step={0.5}
+          onChange={(v) => setFx({ mid: v })}
+          format={db}
+        />
       </Field>
       <Field label="Treble (3 kHz)">
-        <Slider value={fx.treble} min={-12} max={12} step={0.5} onChange={(v) => setFx({ treble: v })} format={db} />
+        <Slider
+          value={fx.treble}
+          min={-12}
+          max={12}
+          step={0.5}
+          onChange={(v) => setFx({ treble: v })}
+          format={db}
+        />
       </Field>
 
       <div className="section-title">Clean up</div>
       <label className="check">
-        <input type="checkbox" checked={fx.highpass} onChange={(e) => setFx({ highpass: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={fx.highpass}
+          onChange={(e) => setFx({ highpass: e.target.checked })}
+        />
         Remove rumble (high-pass 80 Hz)
       </label>
       <label className="check">
-        <input type="checkbox" checked={fx.denoise} onChange={(e) => setFx({ denoise: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={fx.denoise}
+          onChange={(e) => setFx({ denoise: e.target.checked })}
+        />
         Reduce background noise
       </label>
       {fx.denoise && <div className="hint small">Noise reduction is applied when exporting.</div>}
 
       {isVideoTrack && media?.hasAudio && (
-        <button onClick={() => dispatch({ type: 'DETACH_AUDIO', clipId: clip.id, newId: uid() })}>Detach audio to its own track</button>
+        <button onClick={() => dispatch({ type: 'DETACH_AUDIO', clipId: clip.id, newId: uid() })}>
+          Detach audio to its own track
+        </button>
       )}
     </>
   );
@@ -524,7 +684,9 @@ function TransitionTab({ clip, track, dispatch }) {
           <button
             key={t.id}
             className={`chip ${current?.type === t.id ? 'active' : ''}`}
-            onClick={() => set({ type: t.id, duration: current?.duration || DEFAULT_TRANSITION_DURATION })}
+            onClick={() =>
+              set({ type: t.id, duration: current?.duration || DEFAULT_TRANSITION_DURATION })
+            }
           >
             {t.name}
           </button>
@@ -542,7 +704,9 @@ function TransitionTab({ clip, track, dispatch }) {
           />
         </Field>
       )}
-      {current && !transitionInto(track, clip) && <div className="hint small">This clip is too short for the transition.</div>}
+      {current && !transitionInto(track, clip) && (
+        <div className="hint small">This clip is too short for the transition.</div>
+      )}
     </>
   );
 }
@@ -554,12 +718,16 @@ function AnimationTab({ clip, isText, dispatch }) {
   const maxDur = Math.max(0.1, Math.min(3, clipDur(clip)));
   return (
     <>
-      <div className="hint small">In animations play at the start of the clip, Out animations at its end. They work on any clip and combine with keyframes.</div>
+      <div className="hint small">
+        In animations play at the start of the clip, Out animations at its end. They work on any
+        clip and combine with keyframes.
+      </div>
       {[
         ['in', 'In', clip.animIn],
         ['out', 'Out', clip.animOut],
       ].map(([dir, label, current]) => {
-        const set = (animation) => dispatch({ type: 'SET_ANIMATION', clipId: clip.id, dir, animation });
+        const set = (animation) =>
+          dispatch({ type: 'SET_ANIMATION', clipId: clip.id, dir, animation });
         return (
           <div key={dir} className="anim-section">
             <div className="section-title">{label} animation</div>
@@ -571,7 +739,12 @@ function AnimationTab({ clip, isText, dispatch }) {
                 <button
                   key={a.id}
                   className={`chip ${current?.type === a.id ? 'active' : ''}`}
-                  onClick={() => set({ type: a.id, duration: current?.duration ?? Math.min(DEFAULT_ANIMATION_DURATION, maxDur) })}
+                  onClick={() =>
+                    set({
+                      type: a.id,
+                      duration: current?.duration ?? Math.min(DEFAULT_ANIMATION_DURATION, maxDur),
+                    })
+                  }
                 >
                   {a.name}
                 </button>
@@ -579,7 +752,14 @@ function AnimationTab({ clip, isText, dispatch }) {
             </div>
             {current && (
               <Field label="Duration">
-                <Slider value={Math.min(current.duration, maxDur)} min={0.1} max={maxDur} step={0.05} onChange={(v) => set({ ...current, duration: v })} format={secs} />
+                <Slider
+                  value={Math.min(current.duration, maxDur)}
+                  min={0.1}
+                  max={maxDur}
+                  step={0.05}
+                  onChange={(v) => set({ ...current, duration: v })}
+                  format={secs}
+                />
               </Field>
             )}
           </div>
@@ -616,7 +796,10 @@ function ProjectSettings({ project, dispatch }) {
           </select>
         </Field>
         <Field label="Frame rate">
-          <select value={fps} onChange={(e) => dispatch({ type: 'SET_SETTINGS', patch: { fps: +e.target.value } })}>
+          <select
+            value={fps}
+            onChange={(e) => dispatch({ type: 'SET_SETTINGS', patch: { fps: +e.target.value } })}
+          >
             {[24, 25, 30, 50, 60].map((f) => (
               <option key={f} value={f}>
                 {f} fps
@@ -627,12 +810,24 @@ function ProjectSettings({ project, dispatch }) {
         <div className="hint">
           Select a clip on the timeline to edit it.
           <ul>
-            <li><kbd>Space</kbd> play / pause</li>
-            <li><kbd>S</kbd> split at playhead</li>
-            <li><kbd>K</kbd> keyframe position, scale, rotation and opacity at the playhead</li>
-            <li><kbd>⌫</kbd> delete clip</li>
-            <li><kbd>{MOD}Z</kbd> / <kbd>{MOD}⇧Z</kbd> undo / redo</li>
-            <li><kbd>←</kbd> <kbd>→</kbd> step one frame</li>
+            <li>
+              <kbd>Space</kbd> play / pause
+            </li>
+            <li>
+              <kbd>S</kbd> split at playhead
+            </li>
+            <li>
+              <kbd>K</kbd> keyframe position, scale, rotation and opacity at the playhead
+            </li>
+            <li>
+              <kbd>⌫</kbd> delete clip
+            </li>
+            <li>
+              <kbd>{MOD}Z</kbd> / <kbd>{MOD}⇧Z</kbd> undo / redo
+            </li>
+            <li>
+              <kbd>←</kbd> <kbd>→</kbd> step one frame
+            </li>
           </ul>
         </div>
       </div>
@@ -649,29 +844,73 @@ function TitleTab({ clip, dispatch }) {
         <textarea rows={3} value={clip.text} onChange={(e) => update({ text: e.target.value })} />
       </Field>
       <Field label="Size">
-        <Slider value={clip.fontSize} min={16} max={240} step={1} onChange={(v) => update({ fontSize: v })} />
+        <Slider
+          value={clip.fontSize}
+          min={16}
+          max={240}
+          step={1}
+          onChange={(v) => update({ fontSize: v })}
+        />
       </Field>
       <Field label="Color">
-        <input type="color" value={clip.color} onChange={(e) => update({ color: e.target.value })} />
+        <input
+          type="color"
+          value={clip.color}
+          onChange={(e) => update({ color: e.target.value })}
+        />
       </Field>
       <Field label="Horizontal">
-        <Slider value={clip.x} min={0} max={1} step={0.01} onChange={(v) => update({ x: v })} format={pct} />
+        <Slider
+          value={clip.x}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(v) => update({ x: v })}
+          format={pct}
+        />
       </Field>
       <Field label="Vertical">
-        <Slider value={clip.y} min={0} max={1} step={0.01} onChange={(v) => update({ y: v })} format={pct} />
+        <Slider
+          value={clip.y}
+          min={0}
+          max={1}
+          step={0.01}
+          onChange={(v) => update({ y: v })}
+          format={pct}
+        />
       </Field>
       <label className="check">
-        <input type="checkbox" checked={clip.box} onChange={(e) => update({ box: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={clip.box}
+          onChange={(e) => update({ box: e.target.checked })}
+        />
         Background box
       </label>
       <Field label="Duration">
-        <Slider value={dur} min={0.5} max={30} step={0.1} onChange={(v) => update({ in: 0, out: v })} format={secs} />
+        <Slider
+          value={dur}
+          min={0.5}
+          max={30}
+          step={0.1}
+          onChange={(v) => update({ in: 0, out: v })}
+          format={secs}
+        />
       </Field>
     </>
   );
 }
 
-export default function Inspector({ project, selected, dispatch, time, setTime, tab, setTab, notify }) {
+export default function Inspector({
+  project,
+  selected,
+  dispatch,
+  time,
+  setTime,
+  tab,
+  setTab,
+  notify,
+}) {
   if (!selected) return <ProjectSettings project={project} dispatch={dispatch} />;
 
   const { track, clip } = selected;
@@ -679,7 +918,11 @@ export default function Inspector({ project, selected, dispatch, time, setTime, 
   const dur = clipDur(clip);
 
   let tabs;
-  if (track.kind === 'text') tabs = [['title', 'Title'], ['animation', 'Animation']];
+  if (track.kind === 'text')
+    tabs = [
+      ['title', 'Title'],
+      ['animation', 'Animation'],
+    ];
   else if (track.kind === 'audio') tabs = [['audio', 'Audio']];
   else {
     tabs = [
@@ -696,27 +939,52 @@ export default function Inspector({ project, selected, dispatch, time, setTime, 
     <section className="panel inspector">
       <div className="panel-header tabs">
         {tabs.map(([id, label]) => (
-          <button key={id} className={`tab ${active === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+          <button
+            key={id}
+            className={`tab ${active === id ? 'active' : ''}`}
+            onClick={() => setTab(id)}
+          >
             {label}
           </button>
         ))}
       </div>
       <div className="inspector-body">
-        {media && <div className="inspector-name" title={media.path}>{media.name}</div>}
+        {media && (
+          <div className="inspector-name" title={media.path}>
+            {media.name}
+          </div>
+        )}
         <div className="muted small">
           {formatTime(clip.start)} → {formatTime(clip.start + dur)} ({dur.toFixed(2)}s)
         </div>
 
         {active === 'title' && <TitleTab clip={clip} dispatch={dispatch} />}
         {active === 'video' && (
-          <VideoTab project={project} clip={clip} media={media} track={track} time={time} setTime={setTime} dispatch={dispatch} />
+          <VideoTab
+            project={project}
+            clip={clip}
+            media={media}
+            track={track}
+            time={time}
+            setTime={setTime}
+            dispatch={dispatch}
+          />
         )}
-        {active === 'color' && <ColorTab clip={clip} media={media} dispatch={dispatch} notify={notify} />}
-        {active === 'audio' && <AudioTab clip={clip} media={media} track={track} dispatch={dispatch} />}
+        {active === 'color' && (
+          <ColorTab clip={clip} media={media} dispatch={dispatch} notify={notify} />
+        )}
+        {active === 'audio' && (
+          <AudioTab clip={clip} media={media} track={track} dispatch={dispatch} />
+        )}
         {active === 'transition' && <TransitionTab clip={clip} track={track} dispatch={dispatch} />}
-        {active === 'animation' && <AnimationTab clip={clip} isText={track.kind === 'text'} dispatch={dispatch} />}
+        {active === 'animation' && (
+          <AnimationTab clip={clip} isText={track.kind === 'text'} dispatch={dispatch} />
+        )}
 
-        <button className="danger" onClick={() => dispatch({ type: 'DELETE_CLIP', clipId: clip.id })}>
+        <button
+          className="danger"
+          onClick={() => dispatch({ type: 'DELETE_CLIP', clipId: clip.id })}
+        >
           Delete clip
         </button>
       </div>

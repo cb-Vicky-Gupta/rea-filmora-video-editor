@@ -2,17 +2,22 @@
 
 <img src="build/icon.png" width="96" align="right" alt="" />
 
+[![CI](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/cb-Vicky-Gupta/rea-filmora-video-editor)](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A video editor for **macOS, Windows and Android**: multi-track timeline, transitions, keyframes and animations, color grading with LUTs, audio EQ and a full export window. Built with React, WebGL and FFmpeg (Electron on desktop, Capacitor + ffmpeg.wasm on Android).
 
 ## Download
 
-| Platform | Download | Notes |
-| --- | --- | --- |
-| **macOS** (Apple Silicon: M1–M4) | [ReaCut-mac-apple-silicon.dmg](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-mac-apple-silicon.dmg) | macOS 12 or newer |
-| **macOS** (Intel) | [ReaCut-mac-intel.dmg](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-mac-intel.dmg) | macOS 12 or newer |
-| **Windows** (64-bit) | [ReaCut-Setup-windows-x64.exe](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-Setup-windows-x64.exe) | Installer, Windows 10/11 |
-| **Windows** (portable) | [ReaCut-windows-x64-portable.zip](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-windows-x64-portable.zip) | Unzip and run `ReaCut.exe`, no install |
-| **Android** | [ReaCut-android.apk](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-android.apk) | Android 7.0 or newer |
+| Platform                         | Download                                                                                                                                               | Notes                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| **macOS** (Apple Silicon: M1–M4) | [ReaCut-mac-apple-silicon.dmg](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-mac-apple-silicon.dmg)       | macOS 12 or newer                      |
+| **macOS** (Intel)                | [ReaCut-mac-intel.dmg](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-mac-intel.dmg)                       | macOS 12 or newer                      |
+| **Windows** (64-bit)             | [ReaCut-Setup-windows-x64.exe](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-Setup-windows-x64.exe)       | Installer, Windows 10/11               |
+| **Windows** (portable)           | [ReaCut-windows-x64-portable.zip](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-windows-x64-portable.zip) | Unzip and run `ReaCut.exe`, no install |
+| **Android**                      | [ReaCut-android.apk](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases/latest/download/ReaCut-android.apk)                           | Android 7.0 or newer                   |
 
 All releases: [github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases](https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/releases)
 
@@ -58,7 +63,10 @@ npm run dev:android    # Android UI in the browser at http://localhost:5174
 npm run dist:mac       # release/ReaCut-<version>-arm64.dmg and -x64.dmg
 npm run dist:win       # release/ReaCut-Setup-<version>-x64.exe and a portable .zip (builds on a Mac too)
 npm run dist:android   # release/ReaCut-<version>.apk (signed)
+npm run lint && npm test && npm run format:check   # what CI runs
 ```
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and the [security policy](SECURITY.md).
 
 `dist:android` needs JDK 21 and the Android SDK (`brew install openjdk@21 && brew install --cask android-commandlinetools`, then `sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"`), with `JAVA_HOME` and `ANDROID_HOME` set. Release APKs are signed with the key described by `~/.reacut-android/keystore.properties` (or the file in `REACUT_KEYSTORE_PROPERTIES`); it is never stored in this repo. Keep it backed up: Android only installs updates signed with the same key.
 

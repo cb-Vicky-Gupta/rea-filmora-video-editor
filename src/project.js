@@ -5,7 +5,8 @@ export * from '../shared/model.mjs';
 
 export const uid = () => crypto.randomUUID();
 // Desktop serves local files over the media:// protocol; Android hands out object URLs.
-export const mediaUrl = (p) => (window.api?.mediaUrl ? window.api.mediaUrl(p) : 'media://file/' + encodeURIComponent(p));
+export const mediaUrl = (p) =>
+  window.api?.mediaUrl ? window.api.mediaUrl(p) : 'media://file/' + encodeURIComponent(p);
 export const isBounded = (media) => !!media && media.kind !== 'image';
 export const baseName = (p) => p.split(/[\\/]/).pop();
 
@@ -60,12 +61,14 @@ export function findFreeStart(others, dur, desired) {
   return Math.max(0, best);
 }
 
-const fits = (track, start, dur) => track.clips.every((c) => clipEnd(c) <= start + EPS || c.start >= start + dur - EPS);
+const fits = (track, start, dur) =>
+  track.clips.every((c) => clipEnd(c) <= start + EPS || c.start >= start + dur - EPS);
 
 export function trackAccepts(track, media) {
   if (!media) return false;
   if (track.kind === 'video') return media.kind === 'video' || media.kind === 'image';
-  if (track.kind === 'audio') return media.kind === 'audio' || (media.kind === 'video' && media.hasAudio);
+  if (track.kind === 'audio')
+    return media.kind === 'audio' || (media.kind === 'video' && media.hasAudio);
   return false;
 }
 
@@ -85,7 +88,8 @@ function mapClip(project, clipId, fn) {
 }
 
 // Tracks that can't be removed: the main video track and the titles track.
-export const isPermanentTrack = (project, track) => track.kind === 'text' || track === mainVideoTrack(project);
+export const isPermanentTrack = (project, track) =>
+  track.kind === 'text' || track === mainVideoTrack(project);
 
 function newVideoTrack(project) {
   const count = project.tracks.filter((t) => t.kind === 'video').length;
@@ -108,7 +112,10 @@ function projectReducer(project, action) {
       const media = { ...project.media };
       delete media[action.mediaId];
       return {
-        ...mapTracks(project, (t) => ({ ...t, clips: t.clips.filter((c) => c.mediaId !== action.mediaId) })),
+        ...mapTracks(project, (t) => ({
+          ...t,
+          clips: t.clips.filter((c) => c.mediaId !== action.mediaId),
+        })),
         media,
       };
     }
@@ -117,7 +124,9 @@ function projectReducer(project, action) {
       if (!media) return project;
       const track =
         project.tracks.find((t) => t.id === action.trackId && trackAccepts(t, media)) ||
-        (trackKindFor(media) === 'video' ? mainVideoTrack(project) : project.tracks.find((t) => t.kind === 'audio'));
+        (trackKindFor(media) === 'video'
+          ? mainVideoTrack(project)
+          : project.tracks.find((t) => t.kind === 'audio'));
       const dur = media.duration;
       const desired = action.start ?? track.clips.reduce((end, c) => Math.max(end, clipEnd(c)), 0);
       const clip = {
@@ -132,7 +141,9 @@ function projectReducer(project, action) {
         fadeIn: 0,
         fadeOut: 0,
       };
-      return mapTracks(project, (t) => (t.id === track.id ? { ...t, clips: [...t.clips, clip] } : t));
+      return mapTracks(project, (t) =>
+        t.id === track.id ? { ...t, clips: [...t.clips, clip] } : t,
+      );
     }
     case 'ADD_TITLE': {
       const track = project.tracks.find((t) => t.kind === 'text');
@@ -149,7 +160,9 @@ function projectReducer(project, action) {
         box: false,
         ...action.preset,
       };
-      return mapTracks(project, (t) => (t.id === track.id ? { ...t, clips: [...t.clips, clip] } : t));
+      return mapTracks(project, (t) =>
+        t.id === track.id ? { ...t, clips: [...t.clips, clip] } : t,
+      );
     }
     case 'ADD_AUDIO_TRACK':
       return { ...project, tracks: [...project.tracks, newAudioTrack(project)] };
@@ -194,8 +207,10 @@ function projectReducer(project, action) {
               ...t,
               clips: t.clips
                 .filter((c) => c.id !== action.clipId)
-                .map((c) => (shift && c.start >= end - EPS ? { ...c, start: Math.max(0, c.start - shift) } : c)),
-            }
+                .map((c) =>
+                  shift && c.start >= end - EPS ? { ...c, start: Math.max(0, c.start - shift) } : c,
+                ),
+            },
       );
     }
     case 'SPLIT': {
@@ -206,7 +221,14 @@ function projectReducer(project, action) {
       if (offset < MIN_CLIP || clipDur(clip) - offset < MIN_CLIP) return project;
       const cut = clip.in + offset * clipSpeed(clip);
       const left = { ...clip, out: cut, fadeOut: 0 };
-      const right = { ...clip, id: action.newId, start: action.time, in: cut, fadeIn: 0, transition: undefined };
+      const right = {
+        ...clip,
+        id: action.newId,
+        start: action.time,
+        in: cut,
+        fadeIn: 0,
+        transition: undefined,
+      };
       return mapTracks(project, (t) => ({
         ...t,
         clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])),
@@ -230,21 +252,30 @@ function projectReducer(project, action) {
                 if (c.start >= oldEnd - EPS) return { ...c, start: Math.max(0, c.start + delta) };
                 return c;
               }),
-            }
+            },
       );
     }
     case 'APPLY_GRADE_ALL':
       return mapTracks(project, (t) =>
-        t.kind === 'video' ? { ...t, clips: t.clips.map((c) => ({ ...c, grade: action.grade })) } : t
+        t.kind === 'video'
+          ? { ...t, clips: t.clips.map((c) => ({ ...c, grade: action.grade })) }
+          : t,
       );
     case 'SET_TRANSITION':
-      return mapClip(project, action.clipId, (c) => ({ ...c, transition: action.transition || undefined }));
+      return mapClip(project, action.clipId, (c) => ({
+        ...c,
+        transition: action.transition || undefined,
+      }));
     case 'SET_KEYFRAME': {
       // Replaces a keyframe within half a frame of `t`, otherwise inserts one.
       const tol = 0.5 / project.settings.fps;
       return mapClip(project, action.clipId, (c) => {
-        const list = (c.keyframes?.[action.prop] || []).filter((k) => Math.abs(k.t - action.t) > tol);
-        const prevEase = c.keyframes?.[action.prop]?.find((k) => Math.abs(k.t - action.t) <= tol)?.ease;
+        const list = (c.keyframes?.[action.prop] || []).filter(
+          (k) => Math.abs(k.t - action.t) > tol,
+        );
+        const prevEase = c.keyframes?.[action.prop]?.find(
+          (k) => Math.abs(k.t - action.t) <= tol,
+        )?.ease;
         list.push({ t: action.t, v: action.v, ease: action.ease || prevEase || 'linear' });
         list.sort((a, b) => a.t - b.t);
         return { ...c, keyframes: { ...c.keyframes, [action.prop]: list } };
@@ -253,7 +284,9 @@ function projectReducer(project, action) {
     case 'REMOVE_KEYFRAME': {
       const tol = 0.5 / project.settings.fps;
       return mapClip(project, action.clipId, (c) => {
-        const list = (c.keyframes?.[action.prop] || []).filter((k) => Math.abs(k.t - action.t) > tol);
+        const list = (c.keyframes?.[action.prop] || []).filter(
+          (k) => Math.abs(k.t - action.t) > tol,
+        );
         return { ...c, keyframes: { ...c.keyframes, [action.prop]: list } };
       });
     }
@@ -267,7 +300,8 @@ function projectReducer(project, action) {
     case 'DETACH_AUDIO': {
       const found = findClip(project, action.clipId);
       const media = found && project.media[found.clip.mediaId];
-      if (!media?.hasAudio || found.track.kind !== 'video' || found.clip.audioDetached) return project;
+      if (!media?.hasAudio || found.track.kind !== 'video' || found.clip.audioDetached)
+        return project;
       const { clip } = found;
       const audioClip = {
         id: action.newId,
@@ -283,12 +317,16 @@ function projectReducer(project, action) {
         audio: clip.audio,
       };
       let next = mapClip(project, clip.id, (c) => ({ ...c, audioDetached: true }));
-      let target = next.tracks.find((t) => t.kind === 'audio' && fits(t, clip.start, clipDur(clip)));
+      let target = next.tracks.find(
+        (t) => t.kind === 'audio' && fits(t, clip.start, clipDur(clip)),
+      );
       if (!target) {
         target = newAudioTrack(next);
         next = { ...next, tracks: [...next.tracks, target] };
       }
-      return mapTracks(next, (t) => (t.id === target.id ? { ...t, clips: [...t.clips, audioClip] } : t));
+      return mapTracks(next, (t) =>
+        t.id === target.id ? { ...t, clips: [...t.clips, audioClip] } : t,
+      );
     }
     case 'SET_SETTINGS':
       return { ...project, settings: { ...project.settings, ...action.patch } };
@@ -301,7 +339,9 @@ function projectReducer(project, action) {
 // (so a clip dropped over another one is inserted before or after it).
 function compactMainTrack(project) {
   const main = mainVideoTrack(project);
-  const sorted = [...main.clips].sort((a, b) => a.start + clipDur(a) / 2 - (b.start + clipDur(b) / 2));
+  const sorted = [...main.clips].sort(
+    (a, b) => a.start + clipDur(a) / 2 - (b.start + clipDur(b) / 2),
+  );
   let t = 0;
   let changed = false;
   const clips = sorted.map((c) => {
@@ -311,7 +351,10 @@ function compactMainTrack(project) {
     return placed;
   });
   if (!changed) return project;
-  return { ...project, tracks: project.tracks.map((tr) => (tr === main ? { ...main, clips } : tr)) };
+  return {
+    ...project,
+    tracks: project.tracks.map((tr) => (tr === main ? { ...main, clips } : tr)),
+  };
 }
 
 // Undo/redo wrapper around the project reducer.
@@ -326,7 +369,11 @@ export function historyReducer(state, action) {
       };
     case 'REDO':
       if (!state.future.length) return state;
-      return { past: [...state.past, state.present], present: state.future[0], future: state.future.slice(1) };
+      return {
+        past: [...state.past, state.present],
+        present: state.future[0],
+        future: state.future.slice(1),
+      };
     case 'LOAD_PROJECT':
       return { past: [], present: action.project, future: [] };
     default: {

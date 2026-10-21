@@ -3,7 +3,17 @@ const fs = require('fs');
 const path = require('path');
 
 const { version } = require('../package.json');
-const src = path.join(__dirname, '..', 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
+const src = path.join(
+  __dirname,
+  '..',
+  'android',
+  'app',
+  'build',
+  'outputs',
+  'apk',
+  'release',
+  'app-release.apk',
+);
 if (!fs.existsSync(src)) {
   console.error('No signed APK found. Is ~/.reacut-android/keystore.properties set up?');
   process.exit(1);

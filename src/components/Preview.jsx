@@ -41,7 +41,9 @@ function useCubes(project) {
 export default function Preview({ project, time, playing, duration, onTogglePlay, setTime }) {
   const { width, height } = project.settings;
   const textTrack = project.tracks.find((t) => t.kind === 'text');
-  const titles = textTrack.hidden ? [] : textTrack.clips.filter((c) => time >= c.start && time < c.start + clipDur(c));
+  const titles = textTrack.hidden
+    ? []
+    : textTrack.clips.filter((c) => time >= c.start && time < c.start + clipDur(c));
 
   const canvasRef = useRef(null);
   const rendererRef = useRef(null);
@@ -62,7 +64,8 @@ export default function Preview({ project, time, playing, duration, onTogglePlay
     let raf;
     const loop = () => {
       const scene = sceneRef.current;
-      if (scene && rendererRef.current) rendererRef.current.draw(sizeRef.current.width, sizeRef.current.height, scene);
+      if (scene && rendererRef.current)
+        rendererRef.current.draw(sizeRef.current.width, sizeRef.current.height, scene);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -117,7 +120,11 @@ export default function Preview({ project, time, playing, duration, onTogglePlay
   return (
     <section className="panel preview">
       <div className="preview-stage" ref={stageRef}>
-        <div className="preview-canvas" style={{ width: box.w, height: box.h }} onClick={onTogglePlay}>
+        <div
+          className="preview-canvas"
+          style={{ width: box.w, height: box.h }}
+          onClick={onTogglePlay}
+        >
           <canvas ref={canvasRef} className="preview-media" />
           {titles.map((c) => (
             <div
@@ -144,7 +151,12 @@ export default function Preview({ project, time, playing, duration, onTogglePlay
         <button onClick={() => setTime(0)} title="Go to start (Home)">
           ⏮
         </button>
-        <button className="play" onClick={onTogglePlay} disabled={!duration} title="Play / Pause (Space)">
+        <button
+          className="play"
+          onClick={onTogglePlay}
+          disabled={!duration}
+          title="Play / Pause (Space)"
+        >
           {playing ? '❚❚' : '▶'}
         </button>
         <span className="timecode">

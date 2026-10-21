@@ -14,12 +14,40 @@ const ffmpegPath = app.isPackaged
   ? path.join(process.resourcesPath, isWin ? 'ffmpeg.exe' : 'ffmpeg')
   : require('ffmpeg-static');
 
-const VIDEO_EXT = ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi', 'wmv', 'flv', 'mts', 'm2ts', 'ts', '3gp', 'mpg', 'mpeg', 'ogv'];
+const VIDEO_EXT = [
+  'mp4',
+  'mov',
+  'm4v',
+  'webm',
+  'mkv',
+  'avi',
+  'wmv',
+  'flv',
+  'mts',
+  'm2ts',
+  'ts',
+  '3gp',
+  'mpg',
+  'mpeg',
+  'ogv',
+];
 const MIME = {
-  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm',
-  '.mkv': 'video/x-matroska', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.m4a': 'audio/mp4',
-  '.aac': 'audio/aac', '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.png': 'image/png',
-  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
+  '.mp4': 'video/mp4',
+  '.m4v': 'video/mp4',
+  '.mov': 'video/quicktime',
+  '.webm': 'video/webm',
+  '.mkv': 'video/x-matroska',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
 };
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'reacut-'));
@@ -34,7 +62,16 @@ let mainWindow;
 let currentExport = null;
 
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled: true } },
+  {
+    scheme: 'media',
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
 ]);
 
 function serveFile(request) {
@@ -52,7 +89,12 @@ function serveFile(request) {
   const range = /bytes=(\d*)-(\d*)/.exec(request.headers.get('range') || '');
   if (!range) {
     return new Response(Readable.toWeb(fs.createReadStream(filePath)), {
-      headers: { ...cors, 'Content-Type': type, 'Content-Length': String(size), 'Accept-Ranges': 'bytes' },
+      headers: {
+        ...cors,
+        'Content-Type': type,
+        'Content-Length': String(size),
+        'Accept-Ranges': 'bytes',
+      },
     });
   }
   let start, end;
@@ -96,7 +138,10 @@ function createWindow() {
     backgroundColor: '#15161a',
     autoHideMenuBar: true,
     ...(isWin
-      ? { titleBarStyle: 'hidden', titleBarOverlay: { color: '#1d1f24', symbolColor: '#e7e9ee', height: 44 } }
+      ? {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: { color: '#1d1f24', symbolColor: '#e7e9ee', height: 44 },
+        }
       : { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 14 } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -113,7 +158,10 @@ ipcMain.handle('media:import', async () => {
   const res = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Media', extensions: [...VIDEO_EXT, ...[...AUDIO_EXT, ...IMAGE_EXT].map((e) => e.slice(1))] },
+      {
+        name: 'Media',
+        extensions: [...VIDEO_EXT, ...[...AUDIO_EXT, ...IMAGE_EXT].map((e) => e.slice(1))],
+      },
     ],
   });
   return res.canceled ? [] : probeMany(res.filePaths);

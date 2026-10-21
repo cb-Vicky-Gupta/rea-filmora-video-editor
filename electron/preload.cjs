@@ -5,11 +5,16 @@ contextBridge.exposeInMainWorld('api', {
   importLut: () => ipcRenderer.invoke('lut:import'),
   readLut: (p) => ipcRenderer.invoke('lut:read', p),
   importMedia: () => ipcRenderer.invoke('media:import'),
-  probeFiles: (files) => ipcRenderer.invoke('media:probe', files.map((f) => webUtils.getPathForFile(f))),
+  probeFiles: (files) =>
+    ipcRenderer.invoke(
+      'media:probe',
+      files.map((f) => webUtils.getPathForFile(f)),
+    ),
   saveProject: (project) => ipcRenderer.invoke('project:save', project),
   openProject: () => ipcRenderer.invoke('project:open'),
   chooseExportPath: () => ipcRenderer.invoke('export:choosePath'),
-  startExport: (project, outPath, settings) => ipcRenderer.invoke('export:start', project, outPath, settings),
+  startExport: (project, outPath, settings) =>
+    ipcRenderer.invoke('export:start', project, outPath, settings),
   exportDefaults: () => ipcRenderer.invoke('export:defaults'),
   chooseFolder: (current) => ipcRenderer.invoke('dialog:chooseFolder', current),
   exists: (p) => ipcRenderer.invoke('fs:exists', p),

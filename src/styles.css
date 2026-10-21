@@ -881,8 +881,12 @@ input.hue-range {
   clip-path: none;
   opacity: 0.5;
 }
-.tr-fadeblack .transition-art { background: linear-gradient(90deg, #3a6ea5, #000); }
-.tr-fadewhite .transition-art { background: linear-gradient(90deg, #3a6ea5, #fff); }
+.tr-fadeblack .transition-art {
+  background: linear-gradient(90deg, #3a6ea5, #000);
+}
+.tr-fadewhite .transition-art {
+  background: linear-gradient(90deg, #3a6ea5, #fff);
+}
 .tr-fade:hover .transition-art .b,
 .tr-fadeblack:hover .transition-art .b,
 .tr-fadewhite:hover .transition-art .b,
@@ -892,27 +896,54 @@ input.hue-range {
 }
 .tr-wipeup .transition-art .b,
 .tr-slideup .transition-art .b,
-.tr-smoothup .transition-art .b { clip-path: inset(55% 0 0 0); }
+.tr-smoothup .transition-art .b {
+  clip-path: inset(55% 0 0 0);
+}
 .tr-wipedown .transition-art .b,
 .tr-slidedown .transition-art .b,
-.tr-smoothdown .transition-art .b { clip-path: inset(0 0 55% 0); }
+.tr-smoothdown .transition-art .b {
+  clip-path: inset(0 0 55% 0);
+}
 .tr-wiperight .transition-art .b,
 .tr-slideright .transition-art .b,
-.tr-smoothright .transition-art .b { clip-path: inset(0 55% 0 0); }
+.tr-smoothright .transition-art .b {
+  clip-path: inset(0 55% 0 0);
+}
 .tr-circleopen .transition-art .b,
-.tr-circlecrop .transition-art .b { clip-path: circle(30% at 50% 50%); }
-.tr-circleclose .transition-art .b { clip-path: none; -webkit-mask: radial-gradient(circle, transparent 30%, #000 31%); }
-.tr-rectcrop .transition-art .b { clip-path: inset(25% 25%); }
-.tr-radial .transition-art .b { clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 50% 100%); }
-.tr-horzopen .transition-art .b { clip-path: inset(30% 0); }
-.tr-vertopen .transition-art .b { clip-path: inset(0 30%); }
+.tr-circlecrop .transition-art .b {
+  clip-path: circle(30% at 50% 50%);
+}
+.tr-circleclose .transition-art .b {
+  clip-path: none;
+  -webkit-mask: radial-gradient(circle, transparent 30%, #000 31%);
+}
+.tr-rectcrop .transition-art .b {
+  clip-path: inset(25% 25%);
+}
+.tr-radial .transition-art .b {
+  clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 50% 100%);
+}
+.tr-horzopen .transition-art .b {
+  clip-path: inset(30% 0);
+}
+.tr-vertopen .transition-art .b {
+  clip-path: inset(0 30%);
+}
 @keyframes tr-wipe {
-  from { filter: brightness(0.8); }
-  to { filter: brightness(1.25); }
+  from {
+    filter: brightness(0.8);
+  }
+  to {
+    filter: brightness(1.25);
+  }
 }
 @keyframes tr-fade {
-  from { opacity: 0.1; }
-  to { opacity: 0.9; }
+  from {
+    opacity: 0.1;
+  }
+  to {
+    opacity: 0.9;
+  }
 }
 
 /* ---- Timeline extras ---- */
@@ -926,7 +957,11 @@ input.hue-range {
   justify-content: center;
   font-size: 12px;
   color: #fff;
-  background: repeating-linear-gradient(135deg, rgba(255, 213, 74, 0.45) 0 6px, rgba(255, 213, 74, 0.2) 6px 12px);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 213, 74, 0.45) 0 6px,
+    rgba(255, 213, 74, 0.2) 6px 12px
+  );
   border-right: 1px solid rgba(255, 213, 74, 0.9);
   cursor: pointer;
   z-index: 1;
@@ -998,7 +1033,11 @@ button.icon.danger-icon:hover:not(:disabled) {
 .transition-marker.selected {
   outline: 2px solid #ffd54a;
   outline-offset: -2px;
-  background: repeating-linear-gradient(135deg, rgba(255, 213, 74, 0.75) 0 6px, rgba(255, 213, 74, 0.45) 6px 12px);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 213, 74, 0.75) 0 6px,
+    rgba(255, 213, 74, 0.45) 6px 12px
+  );
 }
 button.marker-remove {
   position: absolute;
@@ -1155,7 +1194,10 @@ button.marker-remove {
   position: absolute;
   right: 6px;
   bottom: 6px;
-  font: 11px 'SF Mono', Menlo, monospace;
+  font:
+    11px 'SF Mono',
+    Menlo,
+    monospace;
   background: rgba(0, 0, 0, 0.7);
   padding: 2px 5px;
   border-radius: 4px;
@@ -1451,7 +1493,8 @@ button.toggle.on {
 @media (max-width: 820px) {
   .app {
     grid-template-rows: auto minmax(0, 1fr) minmax(210px, 36%);
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
     box-sizing: border-box;
   }
   .titlebar,

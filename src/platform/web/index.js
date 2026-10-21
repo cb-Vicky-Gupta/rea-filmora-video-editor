@@ -9,7 +9,14 @@ import { Directory, Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import fontURL from './assets/Roboto-Bold.ttf?url';
 import { buildExportArgs } from '../../../shared/render.mjs';
-import { BROWSER_IMAGE_EXT, extOf, parseProbe, proxyArgs, thumbArgs, waveformArgs } from '../../../shared/probe.mjs';
+import {
+  BROWSER_IMAGE_EXT,
+  extOf,
+  parseProbe,
+  proxyArgs,
+  thumbArgs,
+  waveformArgs,
+} from '../../../shared/probe.mjs';
 
 const EXPORT_DIR = 'ReaCut';
 const FONT_PATH = '/fonts/Roboto-Bold.ttf';
@@ -117,7 +124,8 @@ function pickFiles(accept, multiple) {
 
 function toBase64(bytes, start, end) {
   let bin = '';
-  for (let i = start; i < end; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(end, i + 0x8000)));
+  for (let i = start; i < end; i += 0x8000)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(end, i + 0x8000)));
   return btoa(bin);
 }
 
@@ -134,7 +142,8 @@ async function saveToDocuments(name, bytes) {
   const CHUNK = 3 * 1024 * 1024; // multiple of 3, so base64 chunks concatenate cleanly
   for (let i = 0; i < bytes.length; i += CHUNK) {
     const data = toBase64(bytes, i, Math.min(bytes.length, i + CHUNK));
-    if (i === 0) await Filesystem.writeFile({ path, data, directory: Directory.Documents, recursive: true });
+    if (i === 0)
+      await Filesystem.writeFile({ path, data, directory: Directory.Documents, recursive: true });
     else await Filesystem.appendFile({ path, data, directory: Directory.Documents });
   }
   return (await Filesystem.getUri({ path, directory: Directory.Documents })).uri;
@@ -146,14 +155,18 @@ async function shareFile(uri) {
 
 // ---------------- Import ----------------
 
-const hevcPlays = () => !!document.createElement('video').canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"');
+const hevcPlays = () =>
+  !!document.createElement('video').canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"');
 
 async function probeFile(file) {
   const eng = await getEngine();
   const id = crypto.randomUUID();
   const ext = extOf(file.name);
   let source = file;
-  if (/^\.(heic|heif)$/.test(ext)) throw new Error(`${file.name}: HEIC photos can't be read here. Share it as JPG and import that.`);
+  if (/^\.(heic|heif)$/.test(ext))
+    throw new Error(
+      `${file.name}: HEIC photos can't be read here. Share it as JPG and import that.`,
+    );
 
   files.set(id, source);
   await mount(eng, id);
@@ -161,7 +174,12 @@ async function probeFile(file) {
 
   // Images the WebView can't show (TIFF…) are converted to PNG once.
   if ((ext === '.tif' || ext === '.tiff') && !BROWSER_IMAGE_EXT.has(ext)) {
-    const png = await produce(eng, ['-i', path, '-frames:v', '1', 'x.png'], `${id}.png`, 'image/png');
+    const png = await produce(
+      eng,
+      ['-i', path, '-frames:v', '1', 'x.png'],
+      `${id}.png`,
+      'image/png',
+    );
     if (!png) throw new Error(`Can't read image: ${file.name}`);
     source = new File([png], file.name.replace(/\.[^.]+$/, '.png'), { type: 'image/png' });
     const pngId = crypto.randomUUID();
@@ -172,11 +190,25 @@ async function probeFile(file) {
 
   const { log } = await run(eng, ['-i', path]);
   const info = parseProbe(log, file.name, { hevcPlays: hevcPlays() });
-  const media = { id, key: id, path, name: file.name, ...info, thumb: null, waveform: null, proxy: null };
+  const media = {
+    id,
+    key: id,
+    path,
+    name: file.name,
+    ...info,
+    thumb: null,
+    waveform: null,
+    proxy: null,
+  };
   register(path, source);
 
   if (info.kind !== 'audio') {
-    const thumb = await produce(eng, thumbArgs(path, 'x', info.kind, info.duration), `${id}-thumb.jpg`, 'image/jpeg');
+    const thumb = await produce(
+      eng,
+      thumbArgs(path, 'x', info.kind, info.duration),
+      `${id}-thumb.jpg`,
+      'image/jpeg',
+    );
     if (!thumb) throw new Error(`Can't decode ${file.name}.`);
     media.thumb = register(`/cache/${id}-thumb.jpg`, thumb);
   }
@@ -186,7 +218,12 @@ async function probeFile(file) {
   }
   if (info.needsProxy) {
     const ext2 = info.kind === 'audio' ? 'm4a' : 'mp4';
-    const proxy = await produce(eng, proxyArgs(path, 'x', info.kind), `${id}-proxy.${ext2}`, info.kind === 'audio' ? 'audio/mp4' : 'video/mp4');
+    const proxy = await produce(
+      eng,
+      proxyArgs(path, 'x', info.kind),
+      `${id}-proxy.${ext2}`,
+      info.kind === 'audio' ? 'audio/mp4' : 'video/mp4',
+    );
     if (!proxy) throw new Error(`Can't convert ${file.name} for preview.`);
     media.proxy = register(`/cache/${id}-proxy.${ext2}`, proxy);
   }
@@ -222,7 +259,9 @@ async function startExport(project, outPath, settings) {
   cancelled = false;
   try {
     const eng = await getEngine();
-    const used = new Set(project.tracks.flatMap((t) => t.clips.map((c) => c.mediaId)).filter(Boolean));
+    const used = new Set(
+      project.tracks.flatMap((t) => t.clips.map((c) => c.mediaId)).filter(Boolean),
+    );
     for (const id of used) {
       const m = project.media[id];
       if (m && !m.missing) await mount(eng, m.path.split('/')[2]);
@@ -231,7 +270,11 @@ async function startExport(project, outPath, settings) {
     const jobDir = `/tmp/job-${Date.now()}`;
     await eng.ff.createDir(jobDir);
     const pending = new Map();
-    const known = new Set(Object.values(project.media).filter((m) => !m.missing).map((m) => m.path));
+    const known = new Set(
+      Object.values(project.media)
+        .filter((m) => !m.missing)
+        .map((m) => m.path),
+    );
     const io = {
       exists: (p) => p === FONT_PATH || known.has(p),
       readText: (p) => {
@@ -244,20 +287,33 @@ async function startExport(project, outPath, settings) {
       platform: 'android',
     };
     const out = `/out/${name}`;
-    const { args, total } = buildExportArgs(project, out, jobDir, { ...settings, hardware: false }, io);
+    const { args, total } = buildExportArgs(
+      project,
+      out,
+      jobDir,
+      { ...settings, hardware: false },
+      io,
+    );
     for (const [p, text] of pending) await eng.ff.writeFile(p, text);
 
     // ffmpeg.wasm has no pipe for -progress; read the regular stats lines instead.
-    const cleaned = args.filter((a, i) => !['-progress', 'pipe:1', '-nostats', '-hide_banner'].includes(a) && args[i - 1] !== '-progress');
+    const cleaned = args.filter(
+      (a, i) =>
+        !['-progress', 'pipe:1', '-nostats', '-hide_banner'].includes(a) &&
+        args[i - 1] !== '-progress',
+    );
     const started = performance.now();
     let size = 0;
     const { code, log } = await run(eng, cleaned, (line) => {
       const t = /time=(\S+)/.exec(line);
       if (!t) return;
-      size = (+(/size=\s*(\d+)\s*[kK]i?B/.exec(line)?.[1] || size / 1024)) * 1024;
+      size = +(/size=\s*(\d+)\s*[kK]i?B/.exec(line)?.[1] || size / 1024) * 1024;
       const done = Math.min(1, parseClock(t[1]) / total);
-      const speed = parseFloat(/speed=\s*([\d.]+)x/.exec(line)?.[1]) || (parseClock(t[1]) / ((performance.now() - started) / 1000));
-      for (const cb of progressListeners) cb({ progress: done, fps: +(/fps=\s*([\d.]+)/.exec(line)?.[1] || 0), speed, size });
+      const speed =
+        parseFloat(/speed=\s*([\d.]+)x/.exec(line)?.[1]) ||
+        parseClock(t[1]) / ((performance.now() - started) / 1000);
+      for (const cb of progressListeners)
+        cb({ progress: done, fps: +(/fps=\s*([\d.]+)/.exec(line)?.[1] || 0), speed, size });
     });
     if (cancelled) return { ok: false, cancelled: true };
     if (code !== 0) throw new Error(log.split('\n').filter(Boolean).slice(-6).join('\n'));
@@ -319,7 +375,10 @@ export function install() {
     exists: async (p) => {
       if (!native) return false;
       try {
-        await Filesystem.stat({ path: `${EXPORT_DIR}/${p.split('/').pop()}`, directory: Directory.Documents });
+        await Filesystem.stat({
+          path: `${EXPORT_DIR}/${p.split('/').pop()}`,
+          directory: Directory.Documents,
+        });
         return true;
       } catch {
         return false;

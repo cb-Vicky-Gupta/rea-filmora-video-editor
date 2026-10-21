@@ -34,30 +34,90 @@ export const LOOKS = [
   {
     id: 'teal-orange',
     name: 'Teal & Orange',
-    grade: { contrast: 0.15, shadowTint: { hue: 190, amount: 0.55 }, highlightTint: { hue: 30, amount: 0.45 }, vibrance: 0.2 },
+    grade: {
+      contrast: 0.15,
+      shadowTint: { hue: 190, amount: 0.55 },
+      highlightTint: { hue: 30, amount: 0.45 },
+      vibrance: 0.2,
+    },
   },
   {
     id: 'cinematic',
     name: 'Cinematic',
-    grade: { contrast: 0.2, highlights: -0.3, shadows: 0.1, saturation: -0.15, shadowTint: { hue: 210, amount: 0.35 }, vignette: 0.35 },
+    grade: {
+      contrast: 0.2,
+      highlights: -0.3,
+      shadows: 0.1,
+      saturation: -0.15,
+      shadowTint: { hue: 210, amount: 0.35 },
+      vignette: 0.35,
+    },
   },
-  { id: 'golden', name: 'Golden Hour', grade: { temperature: 0.6, exposure: 0.1, highlightTint: { hue: 40, amount: 0.4 }, vibrance: 0.2 } },
-  { id: 'moody', name: 'Moody', grade: { exposure: -0.25, contrast: 0.25, saturation: -0.3, blacks: -0.2, vignette: 0.5 } },
+  {
+    id: 'golden',
+    name: 'Golden Hour',
+    grade: {
+      temperature: 0.6,
+      exposure: 0.1,
+      highlightTint: { hue: 40, amount: 0.4 },
+      vibrance: 0.2,
+    },
+  },
+  {
+    id: 'moody',
+    name: 'Moody',
+    grade: { exposure: -0.25, contrast: 0.25, saturation: -0.3, blacks: -0.2, vignette: 0.5 },
+  },
   { id: 'faded', name: 'Faded', grade: { fade: 0.5, contrast: -0.15, saturation: -0.2 } },
   {
     id: 'vintage',
     name: 'Vintage',
-    grade: { fade: 0.35, temperature: 0.3, saturation: -0.35, highlightTint: { hue: 45, amount: 0.3 }, vignette: 0.4 },
+    grade: {
+      fade: 0.35,
+      temperature: 0.3,
+      saturation: -0.35,
+      highlightTint: { hue: 45, amount: 0.3 },
+      vignette: 0.4,
+    },
   },
-  { id: 'pastel', name: 'Pastel', grade: { exposure: 0.2, contrast: -0.3, fade: 0.2, vibrance: 0.25 } },
-  { id: 'sepia', name: 'Sepia', grade: { saturation: -1, shadowTint: { hue: 30, amount: 0.5 }, highlightTint: { hue: 40, amount: 0.5 } } },
+  {
+    id: 'pastel',
+    name: 'Pastel',
+    grade: { exposure: 0.2, contrast: -0.3, fade: 0.2, vibrance: 0.25 },
+  },
+  {
+    id: 'sepia',
+    name: 'Sepia',
+    grade: {
+      saturation: -1,
+      shadowTint: { hue: 30, amount: 0.5 },
+      highlightTint: { hue: 40, amount: 0.5 },
+    },
+  },
   { id: 'bw', name: 'B&W', grade: { saturation: -1, contrast: 0.1 } },
-  { id: 'noir', name: 'Noir', grade: { saturation: -1, contrast: 0.5, blacks: -0.3, vignette: 0.55 } },
+  {
+    id: 'noir',
+    name: 'Noir',
+    grade: { saturation: -1, contrast: 0.5, blacks: -0.3, vignette: 0.55 },
+  },
 ].map((l) => ({ ...l, grade: { ...DEFAULT_GRADE, ...l.grade } }));
 
 export const clipGrade = (c) => ({ ...DEFAULT_GRADE, ...c.grade });
 
-const COLOR_KEYS = ['exposure', 'contrast', 'highlights', 'shadows', 'whites', 'blacks', 'temperature', 'tint', 'saturation', 'vibrance', 'hue', 'fade'];
+const COLOR_KEYS = [
+  'exposure',
+  'contrast',
+  'highlights',
+  'shadows',
+  'whites',
+  'blacks',
+  'temperature',
+  'tint',
+  'saturation',
+  'vibrance',
+  'hue',
+  'fade',
+];
 
 // True when the grade changes colors (vignette aside), i.e. a LUT is needed.
 export function needsLut(grade) {
@@ -99,6 +159,7 @@ function hueMatrix(deg) {
   const a = (deg * Math.PI) / 180;
   const c = Math.cos(a);
   const s = Math.sin(a);
+  // prettier-ignore
   return [
     0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928,
     0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.14, 0.072 - c * 0.072 - s * 0.283,
@@ -113,9 +174,15 @@ function sampleCube(cube, r, g, b) {
   const fr = clamp01((r - cube.min[0]) / (cube.max[0] - cube.min[0])) * (n - 1);
   const fg = clamp01((g - cube.min[1]) / (cube.max[1] - cube.min[1])) * (n - 1);
   const fb = clamp01((b - cube.min[2]) / (cube.max[2] - cube.min[2])) * (n - 1);
-  const r0 = Math.floor(fr), g0 = Math.floor(fg), b0 = Math.floor(fb);
-  const r1 = Math.min(n - 1, r0 + 1), g1 = Math.min(n - 1, g0 + 1), b1 = Math.min(n - 1, b0 + 1);
-  const tr = fr - r0, tg = fg - g0, tb = fb - b0;
+  const r0 = Math.floor(fr),
+    g0 = Math.floor(fg),
+    b0 = Math.floor(fb);
+  const r1 = Math.min(n - 1, r0 + 1),
+    g1 = Math.min(n - 1, g0 + 1),
+    b1 = Math.min(n - 1, b0 + 1);
+  const tr = fr - r0,
+    tg = fg - g0,
+    tb = fb - b0;
   const out = [0, 0, 0];
   for (let ch = 0; ch < 3; ch++) {
     const at = (ri, gi, bi) => d[(ri + gi * n + bi * n * n) * 3 + ch];
@@ -239,9 +306,12 @@ export function parseCube(text) {
     if (key === 'LUT_3D_SIZE') size = +parts[1];
     else if (key === 'DOMAIN_MIN') min = parts.slice(1, 4).map(Number);
     else if (key === 'DOMAIN_MAX') max = parts.slice(1, 4).map(Number);
-    else if (key === 'LUT_1D_SIZE') throw new Error('1D LUTs are not supported; use a 3D .cube LUT.');
-    else if (/^[-+\d.]/.test(parts[0]) && parts.length >= 3) values.push(+parts[0], +parts[1], +parts[2]);
+    else if (key === 'LUT_1D_SIZE')
+      throw new Error('1D LUTs are not supported; use a 3D .cube LUT.');
+    else if (/^[-+\d.]/.test(parts[0]) && parts.length >= 3)
+      values.push(+parts[0], +parts[1], +parts[2]);
   }
-  if (!size || values.length !== size * size * size * 3) throw new Error('Not a valid 3D .cube LUT.');
+  if (!size || values.length !== size * size * size * 3)
+    throw new Error('Not a valid 3D .cube LUT.');
   return { size, min, max, data: Float32Array.from(values) };
 }

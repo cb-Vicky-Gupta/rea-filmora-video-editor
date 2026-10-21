@@ -172,7 +172,10 @@ export class GLRenderer {
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
-    this.u = new Proxy({}, { get: (cache, name) => (cache[name] ??= gl.getUniformLocation(prog, name)) });
+    this.u = new Proxy(
+      {},
+      { get: (cache, name) => (cache[name] ??= gl.getUniformLocation(prog, name)) },
+    );
     gl.uniform1i(this.u.uTex0, 0);
     gl.uniform1i(this.u.uTex1, 1);
     gl.uniform1i(this.u.uLut0, 2);
@@ -192,7 +195,17 @@ export class GLRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 255]),
+    );
     return tex;
   }
 
@@ -202,7 +215,8 @@ export class GLRenderer {
     gl.bindTexture(gl.TEXTURE_3D, tex);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    for (const w of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, w, gl.CLAMP_TO_EDGE);
+    for (const w of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R])
+      gl.texParameteri(gl.TEXTURE_3D, w, gl.CLAMP_TO_EDGE);
     gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB16F, size, size, size, 0, gl.RGB, gl.FLOAT, data);
     return tex;
   }
@@ -234,7 +248,9 @@ export class GLRenderer {
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, entry.tex);
     const isVideo = source instanceof HTMLVideoElement;
-    const ready = isVideo ? source.readyState >= 2 && source.videoWidth > 0 : source.complete && source.naturalWidth > 0;
+    const ready = isVideo
+      ? source.readyState >= 2 && source.videoWidth > 0
+      : source.complete && source.naturalWidth > 0;
     if (ready && !entry.static) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
       entry.w = isVideo ? source.videoWidth : source.naturalWidth;
@@ -257,7 +273,13 @@ export class GLRenderer {
     const at = (name) => gl.getUniformLocation(this.prog, `${name}[${i}]`);
     gl.uniform1i(at('uOn'), 1);
     gl.uniform2f(at('uSrc'), entry.w, entry.h);
-    gl.uniform4f(at('uXf'), layer.x, layer.y, Math.max(0.001, layer.scale), (layer.rotation * Math.PI) / 180);
+    gl.uniform4f(
+      at('uXf'),
+      layer.x,
+      layer.y,
+      Math.max(0.001, layer.scale),
+      (layer.rotation * Math.PI) / 180,
+    );
     gl.uniform1f(at('uOp'), layer.opacity);
     gl.uniform1f(at('uVig'), layer.grade.vignette);
     const useLut = needsLut(layer.grade) && (!layer.grade.lut || layer.cube);

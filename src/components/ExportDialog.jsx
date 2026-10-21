@@ -30,7 +30,11 @@ function loadSaved() {
 
 function save(settings) {
   try {
-    const { range, rangeStart, rangeEnd, ...rest } = settings;
+    // The range belongs to this timeline only; everything else is remembered.
+    const rest = { ...settings };
+    delete rest.range;
+    delete rest.rangeStart;
+    delete rest.rangeEnd;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
   } catch {
     // Settings just won't be remembered.
@@ -53,7 +57,12 @@ function Segmented({ value, options, onChange }) {
   return (
     <div className="segmented">
       {options.map((o) => (
-        <button key={o.id} className={value === o.id ? 'active' : ''} onClick={() => onChange(o.id)} disabled={o.disabled}>
+        <button
+          key={o.id}
+          className={value === o.id ? 'active' : ''}
+          onClick={() => onChange(o.id)}
+          disabled={o.disabled}
+        >
           {o.label}
         </button>
       ))}
@@ -165,8 +174,11 @@ export default function ExportDialog({ project, duration, time, onClose }) {
   const usesRate = hasVideo && format.video !== 'prores' && format.video !== 'gif';
   const hwAvailable = isMac && (format.video === 'h264' || format.video === 'hevc');
   const usesQuality = (usesRate && s.rateMode === 'crf') || format.video === 'prores';
-  const aspectDiffers = Math.abs(s.width / s.height - project.settings.width / project.settings.height) > 0.01;
-  const thumb = mainVideoTrack(project).clips.map((c) => project.media[c.mediaId]?.thumb).find(Boolean);
+  const aspectDiffers =
+    Math.abs(s.width / s.height - project.settings.width / project.settings.height) > 0.01;
+  const thumb = mainVideoTrack(project)
+    .clips.map((c) => project.media[c.mediaId]?.thumb)
+    .find(Boolean);
 
   const applyPreset = (id) => {
     const p = PRESETS.find((x) => x.id === id);
@@ -188,16 +200,22 @@ export default function ExportDialog({ project, duration, time, onClose }) {
     setStatus('exporting');
     startedAt.current = Date.now();
     try {
-      const res = await window.api.startExport(project, fullPath, { ...s, hardware: s.hardware && hwAvailable });
+      const res = await window.api.startExport(project, fullPath, {
+        ...s,
+        hardware: s.hardware && hwAvailable,
+      });
       setStatus(res.ok ? 'done' : 'cancelled');
     } catch (e) {
-      setError(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''));
+      setError(
+        String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''),
+      );
       setStatus('error');
     }
   };
 
   const elapsed = (now - startedAt.current) / 1000;
-  const remaining = progress.progress > 0.02 ? (elapsed / progress.progress) * (1 - progress.progress) : NaN;
+  const remaining =
+    progress.progress > 0.02 ? (elapsed / progress.progress) * (1 - progress.progress) : NaN;
 
   if (status !== 'idle') {
     return (
@@ -211,10 +229,22 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                 <div className="progress-bar" style={{ width: `${progress.progress * 100}%` }} />
               </div>
               <div className="ex-stats">
-                <div><span>Elapsed</span>{fmtDuration(elapsed)}</div>
-                <div><span>Remaining</span>{fmtDuration(remaining)}</div>
-                <div><span>Speed</span>{progress.speed ? `${progress.speed.toFixed(1)}× real time` : '—'}</div>
-                <div><span>Written</span>{progress.size ? formatBytes(progress.size) : '—'}</div>
+                <div>
+                  <span>Elapsed</span>
+                  {fmtDuration(elapsed)}
+                </div>
+                <div>
+                  <span>Remaining</span>
+                  {fmtDuration(remaining)}
+                </div>
+                <div>
+                  <span>Speed</span>
+                  {progress.speed ? `${progress.speed.toFixed(1)}× real time` : '—'}
+                </div>
+                <div>
+                  <span>Written</span>
+                  {progress.size ? formatBytes(progress.size) : '—'}
+                </div>
               </div>
               <div className="modal-actions">
                 <button onClick={() => window.api.cancelExport()}>Cancel export</button>
@@ -225,8 +255,12 @@ export default function ExportDialog({ project, duration, time, onClose }) {
             <>
               <div className="done-icon">✓</div>
               <h2>Export complete</h2>
-              <div className="muted path-line" title={outPath}>{outPath}</div>
-              <div className="muted">Finished in {fmtDuration((Date.now() - startedAt.current) / 1000)}</div>
+              <div className="muted path-line" title={outPath}>
+                {outPath}
+              </div>
+              <div className="muted">
+                Finished in {fmtDuration((Date.now() - startedAt.current) / 1000)}
+              </div>
               <div className="modal-actions center">
                 <button onClick={() => setStatus('idle')}>Export another</button>
                 {isAndroid ? (
@@ -235,7 +269,9 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                   </button>
                 ) : (
                   <>
-                    <button onClick={() => window.api.reveal(outPath)}>{isMac ? 'Show in Finder' : 'Show in folder'}</button>
+                    <button onClick={() => window.api.reveal(outPath)}>
+                      {isMac ? 'Show in Finder' : 'Show in folder'}
+                    </button>
                     <button className="primary" onClick={() => window.api.openFile(outPath)}>
                       Open video
                     </button>
@@ -283,16 +319,40 @@ export default function ExportDialog({ project, duration, time, onClose }) {
               <span className="ex-poster-time">{formatTime(rangeLen)}</span>
             </div>
             <div className="ex-summary">
-              <div><span>Format</span>{format.label}</div>
-              {hasVideo && <div><span>Video</span>{s.width}×{s.height} · {s.fps} fps</div>}
-              <div><span>Audio</span>{s.audio && format.audio ? (format.audio === 'pcm' ? `PCM ${s.sampleRate / 1000} kHz` : `${s.audioBitrate} kbps`) : 'None'}</div>
-              <div><span>Duration</span>{formatTime(rangeLen)}</div>
-              <div className="ex-size"><span>Estimated size</span>≈ {formatBytes(size)}</div>
+              <div>
+                <span>Format</span>
+                {format.label}
+              </div>
+              {hasVideo && (
+                <div>
+                  <span>Video</span>
+                  {s.width}×{s.height} · {s.fps} fps
+                </div>
+              )}
+              <div>
+                <span>Audio</span>
+                {s.audio && format.audio
+                  ? format.audio === 'pcm'
+                    ? `PCM ${s.sampleRate / 1000} kHz`
+                    : `${s.audioBitrate} kbps`
+                  : 'None'}
+              </div>
+              <div>
+                <span>Duration</span>
+                {formatTime(rangeLen)}
+              </div>
+              <div className="ex-size">
+                <span>Estimated size</span>≈ {formatBytes(size)}
+              </div>
             </div>
             <div className="ex-presets">
               <div className="ex-section-title">Presets</div>
               {PRESETS.map((p) => (
-                <button key={p.id} className={`ex-preset ${preset === p.id ? 'active' : ''}`} onClick={() => applyPreset(p.id)}>
+                <button
+                  key={p.id}
+                  className={`ex-preset ${preset === p.id ? 'active' : ''}`}
+                  onClick={() => applyPreset(p.id)}
+                >
                   {p.label}
                 </button>
               ))}
@@ -304,22 +364,28 @@ export default function ExportDialog({ project, duration, time, onClose }) {
               <div className="ex-section-title">File</div>
               <Row label="Name">
                 <div className="name-field">
-                  <input value={s.name} onChange={(e) => set({ name: e.target.value })} spellCheck={false} />
+                  <input
+                    value={s.name}
+                    onChange={(e) => set({ name: e.target.value })}
+                    spellCheck={false}
+                  />
                   <span className="ext">.{format.ext}</span>
                 </div>
               </Row>
               <Row label="Save to">
                 <div className="folder-field">
-                  <span className="folder-path" title={s.folder}>{s.folder || '—'}</span>
+                  <span className="folder-path" title={s.folder}>
+                    {s.folder || '—'}
+                  </span>
                   {!isAndroid && (
-                  <button
-                    onClick={async () => {
-                      const f = await window.api.chooseFolder(s.folder);
-                      if (f) set({ folder: f });
-                    }}
-                  >
-                    Browse…
-                  </button>
+                    <button
+                      onClick={async () => {
+                        const f = await window.api.chooseFolder(s.folder);
+                        if (f) set({ folder: f });
+                      }}
+                    >
+                      Browse…
+                    </button>
                   )}
                 </div>
               </Row>
@@ -327,12 +393,16 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                 <select value={s.format} onChange={(e) => set({ format: e.target.value })}>
                   <optgroup label="Video">
                     {FORMATS.filter((f) => f.video).map((f) => (
-                      <option key={f.id} value={f.id}>{f.label}</option>
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
                     ))}
                   </optgroup>
                   <optgroup label="Audio only">
                     {FORMATS.filter((f) => !f.video).map((f) => (
-                      <option key={f.id} value={f.id}>{f.label}</option>
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
                     ))}
                   </optgroup>
                 </select>
@@ -342,7 +412,12 @@ export default function ExportDialog({ project, duration, time, onClose }) {
             {hasVideo && (
               <section>
                 <div className="ex-section-title">Video</div>
-                <Row label="Resolution" hint={aspectDiffers ? 'Different shape than the project: black bars are added.' : null}>
+                <Row
+                  label="Resolution"
+                  hint={
+                    aspectDiffers ? 'Different shape than the project: black bars are added.' : null
+                  }
+                >
                   <select
                     value={`${s.width}x${s.height}`}
                     onChange={(e) => {
@@ -353,7 +428,9 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                     {resolutions.map((r) => (
                       <option key={`${r.width}x${r.height}`} value={`${r.width}x${r.height}`}>
                         {r.label}
-                        {r.width === project.settings.width && r.height === project.settings.height ? ' (project)' : ''}
+                        {r.width === project.settings.width && r.height === project.settings.height
+                          ? ' (project)'
+                          : ''}
                       </option>
                     ))}
                   </select>
@@ -368,7 +445,14 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                   </select>
                 </Row>
                 {hwAvailable && (
-                  <Row label="Encoder" hint={s.hardware ? 'Uses the Mac’s media engine: much faster, slightly larger files.' : null}>
+                  <Row
+                    label="Encoder"
+                    hint={
+                      s.hardware
+                        ? 'Uses the Mac’s media engine: much faster, slightly larger files.'
+                        : null
+                    }
+                  >
                     <Segmented
                       value={s.hardware ? 'hw' : 'sw'}
                       options={[
@@ -398,7 +482,8 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                       value={s.quality}
                       options={QUALITY_LEVELS.map((q, i) => ({
                         id: q.id,
-                        label: format.video === 'prores' ? ['Proxy', 'LT', '422', 'HQ'][i] : q.label,
+                        label:
+                          format.video === 'prores' ? ['Proxy', 'LT', '422', 'HQ'][i] : q.label,
                       }))}
                       onChange={(v) => set({ quality: v })}
                     />
@@ -407,7 +492,14 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                 {usesRate && s.rateMode !== 'crf' && (
                   <Row label={s.rateMode === 'cbr' ? 'Bitrate' : 'Target bitrate'}>
                     <div className="bitrate-field">
-                      <input type="range" min={500} max={100000} step={500} value={s.bitrate} onChange={(e) => set({ bitrate: +e.target.value })} />
+                      <input
+                        type="range"
+                        min={500}
+                        max={100000}
+                        step={500}
+                        value={s.bitrate}
+                        onChange={(e) => set({ bitrate: +e.target.value })}
+                      />
                       <input
                         type="number"
                         min={0.5}
@@ -422,7 +514,11 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                 )}
                 {usesRate && !(s.hardware && hwAvailable) && (
                   <Row label="Encoding">
-                    <Segmented value={s.speed} options={SPEEDS} onChange={(v) => set({ speed: v })} />
+                    <Segmented
+                      value={s.speed}
+                      options={SPEEDS}
+                      onChange={(v) => set({ speed: v })}
+                    />
                   </Row>
                 )}
               </section>
@@ -434,7 +530,11 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                 {hasVideo && (
                   <Row label="Include audio">
                     <label className="switch">
-                      <input type="checkbox" checked={s.audio} onChange={(e) => set({ audio: e.target.checked })} />
+                      <input
+                        type="checkbox"
+                        checked={s.audio}
+                        onChange={(e) => set({ audio: e.target.checked })}
+                      />
                       <span />
                     </label>
                   </Row>
@@ -443,18 +543,28 @@ export default function ExportDialog({ project, duration, time, onClose }) {
                   <>
                     {format.audio !== 'pcm' && (
                       <Row label="Bitrate">
-                        <select value={s.audioBitrate} onChange={(e) => set({ audioBitrate: +e.target.value })}>
+                        <select
+                          value={s.audioBitrate}
+                          onChange={(e) => set({ audioBitrate: +e.target.value })}
+                        >
                           {AUDIO_BITRATES.map((b) => (
-                            <option key={b} value={b}>{b} kbps</option>
+                            <option key={b} value={b}>
+                              {b} kbps
+                            </option>
                           ))}
                         </select>
                       </Row>
                     )}
                     {format.audio !== 'opus' && (
                       <Row label="Sample rate">
-                        <select value={s.sampleRate} onChange={(e) => set({ sampleRate: +e.target.value })}>
+                        <select
+                          value={s.sampleRate}
+                          onChange={(e) => set({ sampleRate: +e.target.value })}
+                        >
                           {SAMPLE_RATES.map((r) => (
-                            <option key={r} value={r}>{(r / 1000).toFixed(1)} kHz</option>
+                            <option key={r} value={r}>
+                              {(r / 1000).toFixed(1)} kHz
+                            </option>
                           ))}
                         </select>
                       </Row>
@@ -489,10 +599,23 @@ export default function ExportDialog({ project, duration, time, onClose }) {
               {s.range === 'custom' && (
                 <Row label="From / to">
                   <div className="range-field">
-                    <TimeInput value={s.rangeStart} max={duration} onChange={(v) => setSettings((c) => ({ ...c, rangeStart: v }))} />
+                    <TimeInput
+                      value={s.rangeStart}
+                      max={duration}
+                      onChange={(v) => setSettings((c) => ({ ...c, rangeStart: v }))}
+                    />
                     <span className="muted">→</span>
-                    <TimeInput value={s.rangeEnd} max={duration} onChange={(v) => setSettings((c) => ({ ...c, rangeEnd: v }))} />
-                    <button className="link" onClick={() => setSettings((c) => ({ ...c, rangeStart: Math.min(time, c.rangeEnd) }))}>
+                    <TimeInput
+                      value={s.rangeEnd}
+                      max={duration}
+                      onChange={(v) => setSettings((c) => ({ ...c, rangeEnd: v }))}
+                    />
+                    <button
+                      className="link"
+                      onClick={() =>
+                        setSettings((c) => ({ ...c, rangeStart: Math.min(time, c.rangeEnd) }))
+                      }
+                    >
                       Start at playhead
                     </button>
                   </div>
@@ -505,7 +628,9 @@ export default function ExportDialog({ project, duration, time, onClose }) {
         <footer className="ex-footer">
           <div className="ex-footer-info">
             {exists ? (
-              <span className="warn">“{fileName}” already exists in this folder and will be replaced.</span>
+              <span className="warn">
+                “{fileName}” already exists in this folder and will be replaced.
+              </span>
             ) : (
               <span className="muted">
                 {fileName} · ≈ {formatBytes(size)}
@@ -513,7 +638,11 @@ export default function ExportDialog({ project, duration, time, onClose }) {
             )}
           </div>
           <button onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={start} disabled={!s.folder || rangeLen < 0.05 || !duration}>
+          <button
+            className="primary"
+            onClick={start}
+            disabled={!s.folder || rangeLen < 0.05 || !duration}
+          >
             {exists ? 'Replace & Export' : 'Export'}
           </button>
         </footer>

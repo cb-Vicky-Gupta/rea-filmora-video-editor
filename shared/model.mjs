@@ -64,7 +64,8 @@ export const overlayTracks = (project) => videoTracks(project).slice(0, -1).reve
 export function transitionInto(track, clip) {
   const tr = clip.transition;
   if (!tr || !TRANSITION_IDS.includes(tr.type)) return null;
-  const prev = track.clips.find((c) => c !== clip && Math.abs(clipEnd(c) - clip.start) < EPS) || null;
+  const prev =
+    track.clips.find((c) => c !== clip && Math.abs(clipEnd(c) - clip.start) < EPS) || null;
   const duration = Math.min(tr.duration, clipDur(clip));
   if (duration < 0.05) return null;
   return { prev, type: tr.type, duration };
@@ -211,20 +212,27 @@ export function layerProps(clip, local) {
     y: propAt(clip, 'y', local) + animValue(clip, 'y', local),
     scale: propAt(clip, 'scale', local) * animValue(clip, 'scale', local),
     rotation: propAt(clip, 'rotation', local) + animValue(clip, 'rotation', local),
-    opacity: Math.max(0, Math.min(1, propAt(clip, 'opacity', local) * animValue(clip, 'opacity', local))),
+    opacity: Math.max(
+      0,
+      Math.min(1, propAt(clip, 'opacity', local) * animValue(clip, 'opacity', local)),
+    ),
   };
 }
 
-const animates = (clip, prop) => clipAnimations(clip).some(({ anim }) => anim.props[prop] !== undefined);
+const animates = (clip, prop) =>
+  clipAnimations(clip).some(({ anim }) => anim.props[prop] !== undefined);
 
 export function hasTransform(clip) {
   return ['x', 'y', 'scale', 'rotation'].some(
-    (p) => isAnimated(clip, p) || staticValue(clip, p) !== TRANSFORM_PROPS[p].def || animates(clip, p)
+    (p) =>
+      isAnimated(clip, p) || staticValue(clip, p) !== TRANSFORM_PROPS[p].def || animates(clip, p),
   );
 }
 
 export function hasOpacity(clip) {
-  return isAnimated(clip, 'opacity') || staticValue(clip, 'opacity') !== 1 || animates(clip, 'opacity');
+  return (
+    isAnimated(clip, 'opacity') || staticValue(clip, 'opacity') !== 1 || animates(clip, 'opacity')
+  );
 }
 
 // ---- Audio ----

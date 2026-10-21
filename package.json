@@ -1,7 +1,9 @@
 {
   "name": "reacut",
+  "productName": "ReaCut",
   "version": "0.1.0",
   "description": "ReaCut: a video editor for macOS, Windows and Android",
+  "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently -k -n vite,electron \"vite\" \"wait-on tcp:5173 && electron . --dev-server=http://localhost:5173\"",
@@ -12,9 +14,27 @@
     "dist": "npm run dist:mac && npm run dist:win && npm run dist:android",
     "dev:android": "vite --mode android",
     "build:android": "vite build --mode android && cap sync android",
-    "dist:android": "npm run build:android && cd android && ./gradlew assembleRelease && cd .. && node scripts/copy-apk.cjs"
+    "dist:android": "npm run build:android && cd android && ./gradlew assembleRelease && cd .. && node scripts/copy-apk.cjs",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "author": "Vicky Gupta",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor/issues"
+  },
+  "homepage": "https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor#readme",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "private": true,
   "dependencies": {
     "@capacitor/android": "8.5.2",
     "@capacitor/core": "8.5.2",
@@ -33,11 +53,12 @@
     "electron": "^45.0.0",
     "electron-builder": "^26.15.3",
     "ffmpeg-static": "^5.3.0",
+    "oxlint": "^1.88.0",
+    "prettier": "^3.9.10",
     "vite": "^8.3.5",
+    "vitest": "^5.0.5",
     "wait-on": "^9.5.1"
   },
-  "productName": "ReaCut",
-  "private": true,
   "build": {
     "appId": "com.reacut.app",
     "productName": "ReaCut",
@@ -98,10 +119,5 @@
       "allowToChangeInstallationDirectory": true,
       "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor.git"
-  },
-  "license": "MIT"
+  }
 }

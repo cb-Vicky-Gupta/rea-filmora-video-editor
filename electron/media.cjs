@@ -8,20 +8,34 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const { IMAGE_EXT, BROWSER_IMAGE_EXT, AUDIO_EXT, parseProbe, thumbArgs, waveformArgs, proxyArgs } = require('../shared/probe.mjs');
+const {
+  IMAGE_EXT,
+  BROWSER_IMAGE_EXT,
+  AUDIO_EXT,
+  parseProbe,
+  thumbArgs,
+  waveformArgs,
+  proxyArgs,
+} = require('../shared/probe.mjs');
 
 function createMediaTools({ ffmpegPath, cacheDir, allow }) {
   fs.mkdirSync(cacheDir, { recursive: true });
 
   const run = (args) =>
     new Promise((resolve) => {
-      execFile(ffmpegPath, args, { maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) => resolve({ err, stderr }));
+      execFile(ffmpegPath, args, { maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) =>
+        resolve({ err, stderr }),
+      );
     });
 
   // Cache files are keyed by the source's path, size and modification time.
   const cacheKey = (filePath) => {
     const st = fs.statSync(filePath);
-    return crypto.createHash('sha1').update(`${filePath}|${st.size}|${st.mtimeMs}`).digest('hex').slice(0, 20);
+    return crypto
+      .createHash('sha1')
+      .update(`${filePath}|${st.size}|${st.mtimeMs}`)
+      .digest('hex')
+      .slice(0, 20);
   };
   const cached = (key, suffix) => path.join(cacheDir, `${key}${suffix}`);
 
@@ -31,9 +45,13 @@ function createMediaTools({ ffmpegPath, cacheDir, allow }) {
     const ext = path.extname(filePath).toLowerCase();
     if (ext === '.heic' || ext === '.heif') {
       if (process.platform !== 'darwin') {
-        throw new Error(`${path.basename(filePath)}: HEIC photos can't be read on Windows. Convert it to JPG first.`);
+        throw new Error(
+          `${path.basename(filePath)}: HEIC photos can't be read on Windows. Convert it to JPG first.`,
+        );
       }
-      await new Promise((resolve) => execFile('sips', ['-s', 'format', 'png', filePath, '--out', out], () => resolve()));
+      await new Promise((resolve) =>
+        execFile('sips', ['-s', 'format', 'png', filePath, '--out', out], () => resolve()),
+      );
     } else {
       await run(['-hide_banner', '-y', '-i', filePath, '-frames:v', '1', out]);
     }
@@ -64,7 +82,9 @@ function createMediaTools({ ffmpegPath, cacheDir, allow }) {
     const args = ['-hide_banner', '-y', ...proxyArgs(media.path, tmp, media.kind)];
     const { err, stderr } = await run(args);
     if (err || !fs.existsSync(tmp)) {
-      throw new Error(`Can't convert ${media.name} for preview: ${stderr.split('\n').filter(Boolean).pop()}`);
+      throw new Error(
+        `Can't convert ${media.name} for preview: ${stderr.split('\n').filter(Boolean).pop()}`,
+      );
     }
     fs.renameSync(tmp, out);
     return out;
@@ -75,7 +95,8 @@ function createMediaTools({ ffmpegPath, cacheDir, allow }) {
     if (!fs.existsSync(media.originalPath || media.path)) return { ...media, missing: true };
     const m = { ...media, missing: false };
     m.key ??= cacheKey(m.originalPath || m.path);
-    if (m.originalPath && !fs.existsSync(m.path)) m.path = await convertImage(m.originalPath, m.key);
+    if (m.originalPath && !fs.existsSync(m.path))
+      m.path = await convertImage(m.originalPath, m.key);
     if (m.kind !== 'audio') m.thumb = await makeThumb(m);
     if (m.hasAudio) m.waveform = await makeWaveform(m);
     if (m.needsProxy) m.proxy = await makeProxy(m);

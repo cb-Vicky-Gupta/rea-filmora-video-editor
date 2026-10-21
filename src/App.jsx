@@ -76,9 +76,7 @@ export default function App() {
     const t = timeRef.current;
     let target = selectedId && findClip(project, selectedId)?.clip;
     if (!target || t <= target.start || t >= clipEnd(target)) {
-      target = project.tracks
-        .flatMap((tr) => tr.clips)
-        .find((c) => t > c.start && t < clipEnd(c));
+      target = project.tracks.flatMap((tr) => tr.clips).find((c) => t > c.start && t < clipEnd(c));
     }
     if (target) dispatch({ type: 'SPLIT', clipId: target.id, time: t, newId: uid() });
   }, [project, selectedId]);
@@ -87,10 +85,17 @@ export default function App() {
   const keyframeAll = useCallback(() => {
     const found = selectedId && findClip(project, selectedId);
     const t = timeRef.current;
-    if (!found || found.track.kind !== 'video' || t < found.clip.start || t > clipEnd(found.clip)) return;
+    if (!found || found.track.kind !== 'video' || t < found.clip.start || t > clipEnd(found.clip))
+      return;
     const { clip } = found;
     for (const prop of Object.keys(TRANSFORM_PROPS)) {
-      dispatch({ type: 'SET_KEYFRAME', clipId: clip.id, prop, t: sourceTime(clip, t), v: propAt(clip, prop, t - clip.start) });
+      dispatch({
+        type: 'SET_KEYFRAME',
+        clipId: clip.id,
+        prop,
+        t: sourceTime(clip, t),
+        v: propAt(clip, prop, t - clip.start),
+      });
     }
     setInspectorTab('video');
   }, [project, selectedId]);
@@ -143,7 +148,7 @@ export default function App() {
       if (ok.length) dispatch({ type: 'ADD_MEDIA', items: ok });
       if (failed.length) notify(failed.map((f) => f.error).join(' · '));
     },
-    [notify]
+    [notify],
   );
 
   const openProject = async () => {
@@ -165,7 +170,10 @@ export default function App() {
     if (selectedId) setMobilePanel('edit');
   }, [selectedId]);
   // Only treat the transition as selected while the clip still has one.
-  const transitionSel = selectedTransition && findClip(project, selectedTransition)?.clip.transition ? selectedTransition : null;
+  const transitionSel =
+    selectedTransition && findClip(project, selectedTransition)?.clip.transition
+      ? selectedTransition
+      : null;
 
   return (
     <div className={`app platform-${window.api?.platform || 'web'}`} data-panel={mobilePanel}>
@@ -175,10 +183,18 @@ export default function App() {
           <button onClick={openProject}>Open</button>
           <button onClick={saveProject}>Save</button>
           <span className="divider" />
-          <button onClick={() => dispatch({ type: 'UNDO' })} disabled={!history.past.length} title="Undo (⌘Z)">
+          <button
+            onClick={() => dispatch({ type: 'UNDO' })}
+            disabled={!history.past.length}
+            title="Undo (⌘Z)"
+          >
             ↶
           </button>
-          <button onClick={() => dispatch({ type: 'REDO' })} disabled={!history.future.length} title="Redo (⇧⌘Z)">
+          <button
+            onClick={() => dispatch({ type: 'REDO' })}
+            disabled={!history.future.length}
+            title="Redo (⇧⌘Z)"
+          >
             ↷
           </button>
           <span className="divider" />
@@ -189,7 +205,13 @@ export default function App() {
       </header>
 
       <main className="workspace">
-        <MediaBin project={project} dispatch={dispatch} onImported={addMedia} selected={selected} time={time} />
+        <MediaBin
+          project={project}
+          dispatch={dispatch}
+          onImported={addMedia}
+          selected={selected}
+          time={time}
+        />
         <Preview
           project={project}
           time={time}
@@ -204,7 +226,11 @@ export default function App() {
             ['edit', selected ? 'Edit clip' : 'Project'],
             ['none', 'Hide panel'],
           ].map(([id, label]) => (
-            <button key={id} className={mobilePanel === id ? 'active' : ''} onClick={() => setMobilePanel(id)}>
+            <button
+              key={id}
+              className={mobilePanel === id ? 'active' : ''}
+              onClick={() => setMobilePanel(id)}
+            >
               {label}
             </button>
           ))}
@@ -239,7 +265,14 @@ export default function App() {
         onOpenTab={setInspectorTab}
       />
 
-      {exportOpen && <ExportDialog project={project} duration={duration} time={time} onClose={() => setExportOpen(false)} />}
+      {exportOpen && (
+        <ExportDialog
+          project={project}
+          duration={duration}
+          time={time}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
       {notice && <div className="toast">{notice}</div>}
     </div>
   );
