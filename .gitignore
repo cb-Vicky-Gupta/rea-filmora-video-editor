@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-android
+release
+vendor
+.DS_Store
+# Android build outputs and machine-specific files are ignored by android/.gitignore.
+# The Android signing key lives in ~/.reacut-android, never in this repo.
+*.jks
+*.keystore
+keystore.properties

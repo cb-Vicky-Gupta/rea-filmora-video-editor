@@ -1,0 +1,107 @@
+{
+  "name": "reacut",
+  "version": "0.1.0",
+  "description": "ReaCut: a video editor for macOS, Windows and Android",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron \"vite\" \"wait-on tcp:5173 && electron . --dev-server=http://localhost:5173\"",
+    "build": "vite build",
+    "start": "vite build && electron .",
+    "dist:mac": "node scripts/fetch-ffmpeg.cjs darwin arm64 && node scripts/fetch-ffmpeg.cjs darwin x64 && vite build && electron-builder --mac --arm64 --x64",
+    "dist:win": "node scripts/fetch-ffmpeg.cjs win32 x64 && vite build && electron-builder --win --x64",
+    "dist": "npm run dist:mac && npm run dist:win && npm run dist:android",
+    "dev:android": "vite --mode android",
+    "build:android": "vite build --mode android && cap sync android",
+    "dist:android": "npm run build:android && cd android && ./gradlew assembleRelease && cd .. && node scripts/copy-apk.cjs"
+  },
+  "author": "Vicky Gupta",
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/share": "8.0.3",
+    "@ffmpeg/core": "0.12.10",
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@ffmpeg/util": "0.12.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "ffmpeg-static": "^5.3.0",
+    "vite": "^8.3.5",
+    "wait-on": "^9.5.1"
+  },
+  "productName": "ReaCut",
+  "private": true,
+  "build": {
+    "appId": "com.reacut.app",
+    "productName": "ReaCut",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "shared/**",
+      "package.json",
+      "!node_modules/@ffmpeg/**",
+      "!node_modules/@capacitor/**"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.video",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/darwin-${arch}/ffmpeg",
+          "to": "ffmpeg"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/win32-${arch}/ffmpeg.exe",
+          "to": "ffmpeg.exe"
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cb-Vicky-Gupta/rea-filmora-video-editor.git"
+  },
+  "license": "MIT"
+}
