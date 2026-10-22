@@ -3,15 +3,243 @@
 //
 // Every clip uses { start, in, out, speed }: `start` is its position on the timeline,
 // `in`/`out` are source timestamps and `(out - in) / speed` is its length on the timeline.
+// A speed ramp (`clip.ramp`) replaces the constant speed with a curve; `clipSpeed` is then the
+// ramp's average speed, so `(out - in) / clipSpeed` still gives the length on the timeline.
 
 export const EPS = 0.001;
 export const MIN_CLIP = 0.1;
 
-export const clipSpeed = (c) => c.speed || 1;
+// ---- Speed ramps ----
+// clip.ramp = { id, points: [{ x, s }] }: `x` runs 0..1 across the clip's source range and `s`
+// is the playback speed there; speed changes linearly between points. Because `x` is relative,
+// the curve stretches with the clip when it is trimmed.
+export const RAMP_MIN = 0.1;
+export const RAMP_MAX = 10;
+
+export const RAMP_PRESETS = [
+  {
+    id: 'montage',
+    name: 'Montage',
+    points: [
+      [0, 2.5],
+      [0.35, 2.5],
+      [0.45, 0.4],
+      [0.55, 0.4],
+      [0.65, 2.5],
+      [1, 2.5],
+    ],
+  },
+  {
+    id: 'hero',
+    name: 'Hero Moment',
+    points: [
+      [0, 1],
+      [0.38, 1],
+      [0.48, 0.25],
+      [0.58, 0.25],
+      [0.68, 1],
+      [1, 1],
+    ],
+  },
+  {
+    id: 'bullet',
+    name: 'Bullet Time',
+    points: [
+      [0, 3],
+      [0.4, 3],
+      [0.5, 0.15],
+      [0.6, 3],
+      [1, 3],
+    ],
+  },
+  {
+    id: 'flash-in',
+    name: 'Flash In',
+    points: [
+      [0, 5],
+      [0.3, 5],
+      [0.45, 1],
+      [1, 1],
+    ],
+  },
+  {
+    id: 'flash-out',
+    name: 'Flash Out',
+    points: [
+      [0, 1],
+      [0.55, 1],
+      [0.7, 5],
+      [1, 5],
+    ],
+  },
+  {
+    id: 'jump-cut',
+    name: 'Jump Cut',
+    points: [
+      [0, 1],
+      [0.25, 1],
+      [0.3, 6],
+      [0.4, 6],
+      [0.45, 1],
+      [0.7, 1],
+      [0.75, 6],
+      [0.85, 6],
+      [0.9, 1],
+      [1, 1],
+    ],
+  },
+  {
+    id: 'speed-up',
+    name: 'Speed Up',
+    points: [
+      [0, 0.5],
+      [1, 3],
+    ],
+  },
+  {
+    id: 'slow-down',
+    name: 'Slow Down',
+    points: [
+      [0, 3],
+      [1, 0.5],
+    ],
+  },
+].map((p) => ({ ...p, points: p.points.map(([x, s]) => ({ x, s })) }));
+
+const clampSpeed = (s) => Math.max(RAMP_MIN, Math.min(RAMP_MAX, s));
+
+// Sorted, clamped points spanning x = 0..1 (missing ends repeat the nearest speed).
+export function normalizeRamp(points) {
+  const pts = points
+    .map((p) => ({ x: Math.max(0, Math.min(1, p.x)), s: clampSpeed(p.s) }))
+    .sort((a, b) => a.x - b.x);
+  if (!pts.length)
+    return [
+      { x: 0, s: 1 },
+      { x: 1, s: 1 },
+    ];
+  if (pts[0].x > 0) pts.unshift({ x: 0, s: pts[0].s });
+  if (pts[pts.length - 1].x < 1) pts.push({ x: 1, s: pts[pts.length - 1].s });
+  return pts;
+}
+
+// Timeline time (in units of the source length) to play from x0 to x0 + dx when the speed
+// goes linearly from s0 (at x0) to s1 (at x0 + span).
+function segmentTime(dx, span, s0, s1) {
+  if (Math.abs(s1 - s0) < 1e-9) return dx / s0;
+  const k = (s1 - s0) / span;
+  return Math.log(1 + (k * dx) / s0) / k;
+}
+
+const tables = new WeakMap();
+// Cumulative timeline times at each point, cached per points array.
+function rampTable(points) {
+  let tbl = tables.get(points);
+  if (tbl) return tbl;
+  const T = [0];
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    T.push(T[i] + (b.x > a.x ? segmentTime(b.x - a.x, b.x - a.x, a.s, b.s) : 0));
+  }
+  tbl = { T, total: T[T.length - 1] };
+  tables.set(points, tbl);
+  return tbl;
+}
+
+const rampPoints = (c) => (c.ramp?.points?.length >= 2 ? c.ramp.points : null);
+
+export const clipSpeed = (c) => {
+  const pts = rampPoints(c);
+  return pts ? 1 / rampTable(pts).total : c.speed || 1;
+};
 export const clipDur = (c) => (c.out - c.in) / clipSpeed(c);
 export const clipEnd = (c) => c.start + clipDur(c);
+
+// Ramp position x (0..1, may run past 1) reached after normalized timeline time `tn`.
+function rampXAt(points, tn) {
+  const { T, total } = rampTable(points);
+  const last = points[points.length - 1];
+  if (tn <= 0) return tn * points[0].s;
+  if (tn >= total) return 1 + (tn - total) * last.s;
+  let i = 0;
+  while (i < points.length - 2 && T[i + 1] <= tn) i++;
+  const a = points[i];
+  const b = points[i + 1];
+  const span = b.x - a.x;
+  const d = tn - T[i];
+  if (Math.abs(b.s - a.s) < 1e-9) return a.x + d * a.s;
+  const k = (b.s - a.s) / span;
+  return a.x + (a.s * (Math.exp(k * d) - 1)) / k;
+}
+
+// Normalized timeline time at ramp position x (inverse of rampXAt).
+function rampTimeAt(points, x) {
+  const { T, total } = rampTable(points);
+  if (x <= 0) return x / points[0].s;
+  if (x >= 1) return total + (x - 1) / points[points.length - 1].s;
+  let i = 0;
+  while (i < points.length - 2 && points[i + 1].x <= x) i++;
+  const a = points[i];
+  const b = points[i + 1];
+  return T[i] + segmentTime(x - a.x, b.x - a.x, a.s, b.s);
+}
+
+// Speed of the curve at ramp position x.
+export function rampSpeedAt(points, x) {
+  if (x <= points[0].x) return points[0].s;
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    if (x <= b.x) return b.x > a.x ? a.s + ((b.s - a.s) * (x - a.x)) / (b.x - a.x) : b.s;
+  }
+  return points[points.length - 1].s;
+}
+
 // Source timestamp shown at timeline time `t` (may run past `out` during a transition).
-export const sourceTime = (c, t) => c.in + (t - c.start) * clipSpeed(c);
+export function sourceTime(c, t) {
+  const pts = rampPoints(c);
+  const L = c.out - c.in;
+  if (!pts || L <= 0) return c.in + (t - c.start) * clipSpeed(c);
+  return c.in + L * rampXAt(pts, (t - c.start) / L);
+}
+
+// Clip-local timeline time at which source timestamp `src` plays.
+export function localTimeOf(c, src) {
+  const pts = rampPoints(c);
+  const L = c.out - c.in;
+  if (!pts || L <= 0) return (src - c.in) / clipSpeed(c);
+  return L * rampTimeAt(pts, (src - c.in) / L);
+}
+
+// Playback speed at timeline time `t`.
+export function speedAt(c, t) {
+  const pts = rampPoints(c);
+  const L = c.out - c.in;
+  if (!pts || L <= 0) return clipSpeed(c);
+  const x = rampXAt(pts, (t - c.start) / L);
+  return rampSpeedAt(pts, Math.max(0, Math.min(1, x)));
+}
+
+export const hasRamp = (c) => !!rampPoints(c);
+
+// Splits a ramp at ramp position xc into the parts before and after, each spanning 0..1.
+export function splitRamp(ramp, xc) {
+  const pts = ramp.points;
+  const sc = rampSpeedAt(pts, xc);
+  const left = [...pts.filter((p) => p.x < xc - 1e-6), { x: xc, s: sc }].map((p) => ({
+    x: p.x / xc,
+    s: p.s,
+  }));
+  const right = [{ x: xc, s: sc }, ...pts.filter((p) => p.x > xc + 1e-6)].map((p) => ({
+    x: (p.x - xc) / (1 - xc),
+    s: p.s,
+  }));
+  return [
+    { id: 'custom', points: normalizeRamp(left) },
+    { id: 'custom', points: normalizeRamp(right) },
+  ];
+}
 
 export function projectDuration(project) {
   let end = 0;
@@ -111,7 +339,7 @@ export function localKeyframes(clip, prop) {
   const kfs = clip.keyframes?.[prop];
   if (!kfs?.length) return null;
   return kfs
-    .map((k) => ({ local: (k.t - clip.in) / clipSpeed(clip), v: k.v, ease: k.ease || 'linear' }))
+    .map((k) => ({ local: localTimeOf(clip, k.t), v: k.v, ease: k.ease || 'linear' }))
     .sort((a, b) => a.local - b.local);
 }
 

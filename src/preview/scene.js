@@ -4,7 +4,6 @@ import {
   clipAudio,
   clipDur,
   clipEnd,
-  clipSpeed,
   effectiveFades,
   fadeFactorAt,
   layerProps,
@@ -12,6 +11,7 @@ import {
   mediaUrl,
   overlayTracks,
   sourceTime,
+  speedAt,
   transitionInto,
 } from '../project.js';
 import { clipGrade } from '../../shared/grade.mjs';
@@ -116,7 +116,7 @@ export function buildScene(project, t) {
       key: layer.clip.id,
       url: playbackUrl(layer.media),
       src: layer.src,
-      rate: clipSpeed(layer.clip),
+      rate: speedAt(layer.clip, t),
       frozen: layer.frozen,
       audio: audioParams(layer.clip, t, playsAudio),
       layer,
@@ -144,7 +144,7 @@ export function buildScene(project, t) {
         key: clip.id,
         url: playbackUrl(media),
         src: sourceTime(clip, t),
-        rate: clipSpeed(clip),
+        rate: speedAt(clip, t),
         frozen: t >= clipEnd(clip),
         audio: audioParams(clip, t, true),
       });

@@ -6,6 +6,9 @@ import {
   REST,
   clipDur,
   clipSpeed,
+  hasRamp,
+  localTimeOf,
+  sourceTime,
   projectDuration,
   mainVideoTrack,
   overlayTracks,
@@ -151,6 +154,54 @@ function atempoChain(speed) {
   return out;
 }
 
+// Speed ramp retiming for `setpts`: the output time of the frame at source offset X is
+// L·τ(X/L), with τ the ramp's time curve (same math as rampTimeAt in shared/model.mjs).
+// Past the end of the curve the last speed continues, for transition tails.
+function rampSetpts(clip) {
+  const pts = clip.ramp.points;
+  const L = clip.out - clip.in;
+  const T = pts.map((p) => localTimeOf(clip, clip.in + p.x * L) / L);
+  const x = `((PTS-STARTPTS)*TB/${num(L)})`;
+  const last = pts[pts.length - 1];
+  let e = `${num(T[T.length - 1])}+(${x}-1)/${num(last.s)}`;
+  for (let i = pts.length - 2; i >= 0; i--) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (b.x <= a.x) continue;
+    const k = (b.s - a.s) / (b.x - a.x);
+    const seg =
+      Math.abs(k) < 1e-9
+        ? `${num(T[i])}+(${x}-${num(a.x)})/${num(a.s)}`
+        : `${num(T[i])}+log(1+${num(k)}*(${x}-${num(a.x)})/${num(a.s)})/${num(k)}`;
+    e = `if(lt(${x},${num(b.x)}),${seg},${e})`;
+  }
+  return `setpts='${num(L)}*(${e})/TB'`;
+}
+
+// Audio can't change tempo continuously, so a ramped clip's sound is cut into short pieces
+// that each play at their own average speed: [{ from, to (source offsets), tempo }].
+export function rampAudioPieces(clip) {
+  const pts = clip.ramp.points;
+  const L = clip.out - clip.in;
+  const step = Math.max(0.15, L / 60);
+  const pieces = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const len = (b.x - a.x) * L;
+    if (len < 1e-4) continue;
+    const count = Math.abs(b.s - a.s) < 1e-9 ? 1 : Math.ceil(len / step);
+    for (let j = 0; j < count; j++) {
+      const from = a.x * L + (len * j) / count;
+      const to = a.x * L + (len * (j + 1)) / count;
+      const t0 = localTimeOf(clip, clip.in + from);
+      const t1 = localTimeOf(clip, clip.in + to);
+      pieces.push({ from, to, tempo: (to - from) / Math.max(1e-6, t1 - t0) });
+    }
+  }
+  return pieces;
+}
+
 function checkMediaFiles(project, io) {
   for (const track of project.tracks) {
     if (track.hidden && track.kind !== 'audio') continue;
@@ -209,13 +260,20 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
   // Opens a clip's source and returns its input index plus the timing filters
   // (speed, frame rate, and padding to `len` seconds by repeating the last frame).
   const openClip = (c, media, len) => {
-    const speed = clipSpeed(c);
     const idx =
       media.kind === 'image'
         ? addInput(['-loop', '1', '-framerate', String(fps), '-t', n(len), '-i', media.path])
-        : addInput(['-ss', n(c.in), '-t', n(len * speed), '-i', media.path]);
+        : addInput([
+            '-ss',
+            n(c.in),
+            '-t',
+            n(sourceTime(c, c.start + len) - c.in),
+            '-i',
+            media.path,
+          ]);
     const chain = [];
-    if (media.kind !== 'image') chain.push(`setpts=(PTS-STARTPTS)/${num(speed)}`);
+    if (media.kind !== 'image')
+      chain.push(hasRamp(c) ? rampSetpts(c) : `setpts=(PTS-STARTPTS)/${num(clipSpeed(c))}`);
     chain.push(
       `fps=${fps}`,
       `tpad=stop_mode=clone:stop_duration=${n(len)}`,
@@ -462,13 +520,32 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
     audioSources.forEach(({ idx, clip }, i) => {
       const dur = clipDur(clip);
       const fx = clipAudio(clip);
-      const chain = [
-        `atrim=duration=${n(dur * clipSpeed(clip))}`,
-        'asetpts=PTS-STARTPTS',
-        ...atempoChain(clipSpeed(clip)),
-        'aformat=sample_rates=48000:channel_layouts=stereo',
-        `volume=${n(clip.volume)}`,
-      ];
+      const srcLen = clip.out - clip.in;
+      let head = `[${idx}:a]`;
+      const chain = [`atrim=duration=${n(srcLen)}`, 'asetpts=PTS-STARTPTS'];
+      if (hasRamp(clip)) {
+        const pieces = rampAudioPieces(clip);
+        const split = pieces.map(() => label('ras'));
+        const parts = pieces.map(() => label('rap'));
+        filters.push(
+          `${head}${chain.join(',')},asplit=${pieces.length}${split.map((l) => `[${l}]`).join('')}`,
+        );
+        pieces.forEach((p, k) => {
+          const tempo = atempoChain(p.tempo);
+          filters.push(
+            `[${split[k]}]atrim=start=${n(p.from)}:end=${n(p.to)},asetpts=PTS-STARTPTS,${tempo.length ? tempo.join(',') : 'anull'}[${parts[k]}]`,
+          );
+        });
+        const joined = label('raj');
+        filters.push(
+          `${parts.map((l) => `[${l}]`).join('')}concat=n=${pieces.length}:v=0:a=1[${joined}]`,
+        );
+        head = `[${joined}]`;
+        chain.length = 0;
+      } else {
+        chain.push(...atempoChain(clipSpeed(clip)));
+      }
+      chain.push('aformat=sample_rates=48000:channel_layouts=stereo', `volume=${n(clip.volume)}`);
       if (fx.highpass) chain.push('highpass=f=80');
       if (fx.bass) chain.push(`bass=g=${num(fx.bass)}:f=100`);
       if (fx.mid) chain.push(`equalizer=f=1000:t=q:w=1:g=${num(fx.mid)}`);
@@ -478,7 +555,7 @@ export function buildExportArgs(project, outPath, tmpDir, settings = {}, io) {
       if (clip.fadeOut > 0)
         chain.push(`afade=t=out:st=${n(Math.max(0, dur - clip.fadeOut))}:d=${n(clip.fadeOut)}`);
       chain.push(`adelay=${Math.round(clip.start * 1000)}:all=1`);
-      filters.push(`[${idx}:a]${chain.join(',')}[as${i}]`);
+      filters.push(`${head}${chain.join(',')}[as${i}]`);
       aLabels.push(`as${i}`);
     });
     filters.push(

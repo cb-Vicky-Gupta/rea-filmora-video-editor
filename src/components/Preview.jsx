@@ -38,7 +38,15 @@ function useCubes(project) {
   return cache.current;
 }
 
-export default function Preview({ project, time, playing, duration, onTogglePlay, setTime }) {
+export default function Preview({
+  project,
+  time,
+  playing,
+  duration,
+  onTogglePlay,
+  setTime,
+  showTransport = true,
+}) {
   const { width, height } = project.settings;
   const textTrack = project.tracks.find((t) => t.kind === 'text');
   const titles = textTrack.hidden
@@ -147,22 +155,24 @@ export default function Preview({ project, time, playing, duration, onTogglePlay
         </div>
       </div>
 
-      <div className="transport">
-        <button onClick={() => setTime(0)} title="Go to start (Home)">
-          ⏮
-        </button>
-        <button
-          className="play"
-          onClick={onTogglePlay}
-          disabled={!duration}
-          title="Play / Pause (Space)"
-        >
-          {playing ? '❚❚' : '▶'}
-        </button>
-        <span className="timecode">
-          {formatTime(time)} <span className="muted">/ {formatTime(duration)}</span>
-        </span>
-      </div>
+      {showTransport && (
+        <div className="transport">
+          <button onClick={() => setTime(0)} title="Go to start (Home)">
+            ⏮
+          </button>
+          <button
+            className="play"
+            onClick={onTogglePlay}
+            disabled={!duration}
+            title="Play / Pause (Space)"
+          >
+            {playing ? '❚❚' : '▶'}
+          </button>
+          <span className="timecode">
+            {formatTime(time)} <span className="muted">/ {formatTime(duration)}</span>
+          </span>
+        </div>
+      )}
     </section>
   );
 }
