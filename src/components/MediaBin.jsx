@@ -94,18 +94,23 @@ const TITLE_PRESETS = [
 
 const KIND_ICON = { video: '▶', audio: '♪', image: '▣' };
 
-function TitlesTab({ dispatch, time }) {
+export function TitlesTab({ dispatch, time, onAdd, hint }) {
   return (
     <>
       <div className="empty-hint left">
-        Click a style to add it at the playhead, then edit the text in the panel on the right.
+        {hint ||
+          'Click a style to add it at the playhead, then edit the text in the panel on the right.'}
       </div>
       <div className="title-lib">
         {TITLE_PRESETS.map((t) => (
           <button
             key={t.name}
             className="title-tile"
-            onClick={() => dispatch({ type: 'ADD_TITLE', start: time, preset: t.preset })}
+            onClick={() =>
+              onAdd
+                ? onAdd(t.preset)
+                : dispatch({ type: 'ADD_TITLE', start: time, preset: t.preset })
+            }
           >
             <div
               className={`title-art ${t.preset.box ? 'boxed' : ''}`}
@@ -126,13 +131,13 @@ function TitlesTab({ dispatch, time }) {
   );
 }
 
-function FiltersTab({ selected, dispatch }) {
+export function FiltersTab({ selected, dispatch, hint, thumb = null }) {
   const target = selected?.track.kind === 'video' ? selected.clip : null;
   return (
     <>
       <div className="empty-hint left">
-        Drag a filter onto a video clip, or select a clip and click one. Fine-tune it in the Color
-        tab.
+        {hint ||
+          'Drag a filter onto a video clip, or select a clip and click one. Fine-tune it in the Color tab.'}
       </div>
       <div className="transition-lib">
         {LOOKS.map((l) => (
@@ -160,7 +165,7 @@ function FiltersTab({ selected, dispatch }) {
             }
             title={target ? 'Apply to the selected clip' : 'Drag onto a video clip'}
           >
-            <LookSwatch thumb={null} grade={l.grade} />
+            <LookSwatch thumb={thumb} grade={l.grade} />
             <span>{l.name}</span>
           </div>
         ))}
@@ -169,15 +174,18 @@ function FiltersTab({ selected, dispatch }) {
   );
 }
 
-function MediaTab({ project, dispatch, busy }) {
-  const items = Object.values(project.media);
+// `onPick` replaces the default tap behaviour (touch layout); `filter` limits the items shown.
+export function MediaTab({ project, dispatch, busy, onPick, filter, empty }) {
+  const items = Object.values(project.media).filter(filter || (() => true));
   if (items.length === 0) {
     return (
-      <div className="empty-hint">
-        Drop videos, music or images here
-        <br />
-        or click <b>Import</b>.
-      </div>
+      empty || (
+        <div className="empty-hint">
+          Drop videos, music or images here
+          <br />
+          or click <b>Import</b>.
+        </div>
+      )
     );
   }
   return (
@@ -198,9 +206,11 @@ function MediaTab({ project, dispatch, busy }) {
           onDoubleClick={() => dispatch({ type: 'ADD_CLIP', mediaId: m.id })}
           // Touch screens can't drag onto the timeline; a tap adds the clip at the end.
           onClick={() =>
-            window.matchMedia('(pointer: coarse)').matches &&
-            !m.missing &&
-            dispatch({ type: 'ADD_CLIP', mediaId: m.id })
+            onPick
+              ? !m.missing && onPick(m)
+              : window.matchMedia('(pointer: coarse)').matches &&
+                !m.missing &&
+                dispatch({ type: 'ADD_CLIP', mediaId: m.id })
           }
           title={`${m.name}\nDouble-click to add to the end of the timeline`}
         >
@@ -240,7 +250,7 @@ function MediaTab({ project, dispatch, busy }) {
   );
 }
 
-function TransitionsTab({ project, selected, dispatch }) {
+export function TransitionsTab({ project, selected, dispatch }) {
   const target = selected?.track === mainVideoTrack(project) ? selected.clip : null;
   return (
     <>

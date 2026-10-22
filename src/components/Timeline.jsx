@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Icon from './icons.jsx';
 import { LOOK_DRAG_TYPE, MEDIA_DRAG_TYPE, TRANSITION_DRAG_TYPE } from './MediaBin.jsx';
 import { LOOKS } from '../../shared/grade.mjs';
 import {
@@ -12,6 +13,7 @@ import {
   clipSpeed,
   findFreeStart,
   formatTime,
+  hasRamp,
   isBounded,
   isPermanentTrack,
   localKeyframes,
@@ -27,6 +29,9 @@ const SNAP_PX = 8;
 const coarse = () => window.matchMedia('(pointer: coarse)').matches;
 const narrow = () => window.matchMedia('(max-width: 820px)').matches;
 const TICK_STEPS = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+const LONG_PRESS_MS = 350;
+const MIN_ZOOM = 10;
+const MAX_ZOOM = 300;
 
 // Applies a move/trim drag to a clip, respecting neighbours and source length.
 // `magnetic`: the clip is on the magnetic main track, where it may overlap neighbours while
@@ -87,12 +92,12 @@ function dragGeometry(drag, dx, zoom, others, media, snapPoints, magnetic) {
   return isBounded(media) ? next : { ...next, out: next.out - next.in, in: 0 };
 }
 
-function Ruler({ width, zoom }) {
+function Ruler({ width, zoom, offset = 0 }) {
   const step = TICK_STEPS.find((s) => s * zoom >= 70) || 600;
   const ticks = [];
   for (let t = 0; t * zoom < width; t += step) ticks.push(t);
   return (
-    <div className="ruler" style={{ width }}>
+    <div className="ruler" style={{ width, marginLeft: offset }}>
       {ticks.map((t) => (
         <div key={t} className="tick" style={{ left: t * zoom }}>
           <span>{formatTime(t, step < 1)}</span>
@@ -145,6 +150,26 @@ function TrackHeader({ project, track, dispatch }) {
   );
 }
 
+// Touch layout: a narrow sticky column with the track's mute (or, for titles, hide) toggle.
+function CompactTrackHeader({ track, dispatch }) {
+  const key = track.kind === 'text' ? 'hidden' : 'muted';
+  const off = !!track[key];
+  const icon = key === 'hidden' ? (off ? 'eyeOff' : 'eye') : off ? 'mute' : 'volume';
+  return (
+    <div className="track-label sticky compact">
+      <button
+        className={`track-btn ${off ? 'off' : ''}`}
+        title={`${track.name}: ${key === 'hidden' ? (off ? 'show' : 'hide') : off ? 'unmute' : 'mute'}`}
+        onClick={() =>
+          dispatch({ type: 'UPDATE_TRACK', trackId: track.id, patch: { [key]: !off } })
+        }
+      >
+        <Icon name={icon} size={16} />
+      </button>
+    </div>
+  );
+}
+
 export default function Timeline({
   project,
   time,
@@ -161,11 +186,21 @@ export default function Timeline({
   onSplit,
   onDelete,
   onOpenTab,
+  // Touch layout: fixed centre playhead, the timeline scrolls under it.
+  mobile = false,
+  onScrub,
+  onAddMedia,
 }) {
   const scrollRef = useRef(null);
   const rowRefs = useRef(new Map());
-  const LABEL_WIDTH = narrow() ? 96 : 150;
-  const HANDLE_PX = coarse() ? 16 : 7;
+  const LABEL_WIDTH = mobile ? 40 : narrow() ? 96 : 150;
+  const HANDLE_PX = mobile ? 0 : coarse() ? 16 : 7;
+  const timeRef = useRef(time);
+  timeRef.current = time;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const pinchRef = useRef(null);
+  const pressRef = useRef(null);
   const tapRef = useRef(null);
   const [drag, setDrag] = useState(null);
   const dragRef = useRef(null);
@@ -179,22 +214,73 @@ export default function Timeline({
     return () => ro.disconnect();
   }, []);
 
-  const contentWidth = Math.max(viewWidth, (duration + 20) * zoom);
+  // x of time 0 inside the scrolled content. On touch, half a screen of lead-in lets time 0
+  // reach the centre playhead.
+  const OFFSET = mobile ? Math.round(viewWidth / 2) : LABEL_WIDTH;
+  const contentWidth = mobile
+    ? duration * zoom + Math.round(viewWidth / 2)
+    : Math.max(viewWidth, (duration + 20) * zoom);
 
   const timeAt = (clientX) => {
     const el = scrollRef.current;
-    const x = clientX - el.getBoundingClientRect().left + el.scrollLeft - LABEL_WIDTH;
+    const x = clientX - el.getBoundingClientRect().left + el.scrollLeft - OFFSET;
     return Math.max(0, x / zoom);
   };
+
+  // Touch layout: the scroll position *is* the playhead position.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!mobile || !el) return;
+    const target = time * zoom;
+    if (Math.abs(el.scrollLeft - target) > 1) el.scrollLeft = target;
+  }, [mobile, time, zoom, viewWidth, contentWidth]);
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!mobile || dragRef.current || pinchRef.current) return;
+    if (Math.abs(el.scrollLeft - timeRef.current * zoomRef.current) <= 1) return;
+    onScrub?.();
+    setTime(Math.min(duration, el.scrollLeft / zoomRef.current));
+  };
+
+  // Two-finger pinch zooms the timeline around the playhead.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!mobile) return;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const start = (e) => {
+      if (e.touches.length === 2) pinchRef.current = { d: dist(e.touches), zoom: zoomRef.current };
+    };
+    const move = (e) => {
+      const p = pinchRef.current;
+      if (!p || e.touches.length !== 2) return;
+      if (e.cancelable) e.preventDefault();
+      const z = (p.zoom * dist(e.touches)) / p.d;
+      setZoom(Math.round(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z))));
+    };
+    const end = (e) => {
+      if (e.touches.length < 2) pinchRef.current = null;
+    };
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+    return () => {
+      el.removeEventListener('touchstart', start);
+      el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end);
+      el.removeEventListener('touchcancel', end);
+    };
+  }, [mobile, setZoom]);
 
   // Keep the playhead in view during playback.
   useEffect(() => {
     const el = scrollRef.current;
-    if (!playing || !el) return;
+    if (mobile || !playing || !el) return;
     const x = time * zoom;
     const visible = el.clientWidth - LABEL_WIDTH;
     if (x > el.scrollLeft + visible - 40 || x < el.scrollLeft) el.scrollLeft = Math.max(0, x - 80);
-  }, [time, playing, zoom]);
+  }, [mobile, LABEL_WIDTH, time, playing, zoom]);
 
   // Scrubbing the playhead.
   useEffect(() => {
@@ -264,26 +350,32 @@ export default function Timeline({
       dragRef.current = null;
       setDrag(null);
     };
+    // A finger drag on a clip must not also scroll the timeline.
+    const noScroll = (e) => e.cancelable && e.preventDefault();
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+    window.addEventListener('touchmove', noScroll, { passive: false });
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      window.removeEventListener('touchmove', noScroll);
     };
   }, [drag?.clipId, drag?.mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startClipDrag = (e, track, clip) => {
+  const startClipDrag = (e, track, clip, forcedMode) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     setSelectedId(clip.id);
     setSelectedTransition(null);
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    let mode = 'move';
-    if (x < HANDLE_PX) mode = 'left';
-    else if (x > rect.width - HANDLE_PX) mode = 'right';
+    let mode = forcedMode || 'move';
+    if (!forcedMode) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (x < HANDLE_PX) mode = 'left';
+      else if (x > rect.width - HANDLE_PX) mode = 'right';
+    }
     dragRef.current = {
       clipId: clip.id,
       trackId: track.id,
@@ -294,6 +386,41 @@ export default function Timeline({
       moved: false,
     };
     setDrag(dragRef.current);
+  };
+
+  // Touch layout, finger on a clip: a tap selects it, a swipe scrolls the timeline, and a long
+  // press on the selected clip picks it up to move it.
+  const pressClip = (e, track, clip) => {
+    if (e.pointerType !== 'touch') return startClipDrag(e, track, clip);
+    e.stopPropagation();
+    const press = { x: e.clientX, y: e.clientY, clipId: clip.id, moved: false };
+    if (clip.id === selectedId) {
+      const ev = { button: 0, clientX: e.clientX, stopPropagation() {} };
+      press.timer = setTimeout(() => {
+        if (pressRef.current !== press || press.moved) return;
+        press.lifted = true;
+        navigator.vibrate?.(15);
+        startClipDrag(ev, track, clip, 'move');
+      }, LONG_PRESS_MS);
+    }
+    pressRef.current = press;
+  };
+  const movePress = (e) => {
+    const p = pressRef.current;
+    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) {
+      p.moved = true;
+      clearTimeout(p.timer);
+    }
+  };
+  const releasePress = (clip) => {
+    const p = pressRef.current;
+    pressRef.current = null;
+    if (!p || p.clipId !== clip.id) return;
+    clearTimeout(p.timer);
+    if (!p.moved && !p.lifted) {
+      setSelectedId(clip.id);
+      setSelectedTransition(null);
+    }
   };
 
   const onTrackDrop = (e, track) => {
@@ -364,233 +491,314 @@ export default function Timeline({
   };
 
   return (
-    <section className="timeline">
-      <div className="timeline-toolbar">
-        <button onClick={onSplit} title="Split at playhead (S)">
-          ✂ Split
-        </button>
-        <button
-          onClick={onDelete}
-          disabled={!selectedId}
-          title={selectedTransition ? 'Remove transition (⌫)' : 'Delete clip (⌫)'}
-        >
-          🗑 {selectedTransition ? 'Remove transition' : 'Delete'}
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'ADD_TITLE', start: time })}
-          title="Add a title at the playhead"
-        >
-          T+ Title
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'DETACH_AUDIO', clipId: selectedId, newId: uid() })}
-          disabled={!canDetach}
-          title="Move the selected video's sound to an audio track"
-        >
-          ♪ Detach audio
-        </button>
-        <span className="divider" />
-        <button
-          className={`toggle ${project.settings.magnet ? 'on' : ''}`}
-          onClick={() =>
-            dispatch({ type: 'SET_SETTINGS', patch: { magnet: !project.settings.magnet } })
-          }
-          title={
-            project.settings.magnet
-              ? 'Magnet on: the main track closes gaps automatically when you delete, cut or trim. Click to turn off.'
-              : 'Magnet off: deleting leaves gaps. Click to turn on.'
-          }
-        >
-          🧲 Magnet
-        </button>
-        <span className="divider" />
-        <button
-          onClick={() => dispatch({ type: 'ADD_VIDEO_TRACK' })}
-          title="Add a video track above the others (picture in picture, overlays)"
-        >
-          + Video track
-        </button>
-        <button onClick={() => dispatch({ type: 'ADD_AUDIO_TRACK' })} title="Add an audio track">
-          + Audio track
-        </button>
-        <div className="spacer" />
-        <span className="muted small">Zoom</span>
-        <input
-          type="range"
-          min="10"
-          max="300"
-          value={zoom}
-          onChange={(e) => setZoom(+e.target.value)}
-        />
-      </div>
-
-      <div className="timeline-scroll" ref={scrollRef}>
-        <div
-          className="timeline-content"
-          style={{ width: contentWidth + LABEL_WIDTH, '--label-w': `${LABEL_WIDTH}px` }}
-        >
-          <div
-            className="ruler-row"
-            onPointerDown={(e) => {
-              setTime(timeAt(e.clientX));
-              setScrubbing(true);
-            }}
+    <section className={`timeline ${mobile ? 'timeline-touch' : ''}`}>
+      {!mobile && (
+        <div className="timeline-toolbar">
+          <button onClick={onSplit} title="Split at playhead (S)">
+            ✂ Split
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={!selectedId}
+            title={selectedTransition ? 'Remove transition (⌫)' : 'Delete clip (⌫)'}
           >
-            <div className="track-label sticky" />
-            <Ruler width={contentWidth} zoom={zoom} />
-          </div>
-
-          {project.tracks.map((track) => (
-            <div
-              key={track.id}
-              className={`track-row kind-${track.kind} ${track.hidden ? 'is-hidden' : ''} ${track.muted ? 'is-muted' : ''}`}
-              ref={(el) =>
-                el ? rowRefs.current.set(track.id, el) : rowRefs.current.delete(track.id)
-              }
-            >
-              <TrackHeader project={project} track={track} dispatch={dispatch} />
-              <div
-                className="track-lane"
-                style={{ width: contentWidth }}
-                onPointerDown={(e) => {
-                  // With a finger, dragging the empty lane scrolls the timeline; a tap moves the playhead.
-                  if (e.pointerType === 'touch') {
-                    tapRef.current = { x: e.clientX, y: e.clientY };
-                    return;
-                  }
-                  setSelectedId(null);
-                  setSelectedTransition(null);
-                  setTime(timeAt(e.clientX));
-                  setScrubbing(true);
-                }}
-                onPointerUp={(e) => {
-                  const tap = tapRef.current;
-                  tapRef.current = null;
-                  if (!tap || Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) return;
-                  setSelectedId(null);
-                  setSelectedTransition(null);
-                  setTime(timeAt(e.clientX));
-                }}
-                onDragOver={(e) => {
-                  if (accepts(e, track)) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                  }
-                }}
-                onDrop={(e) => onTrackDrop(e, track)}
-              >
-                {rowClips(track).map((clip) => {
-                  const c = drag?.clipId === clip.id ? drag.current : clip;
-                  const media = project.media[c.mediaId];
-                  const label = track.kind === 'text' ? c.text : media?.name;
-                  const speed = clipSpeed(c);
-                  const showWave = track.kind === 'audio' && media?.waveform;
-                  const tr = track === mainTrack && !drag && transitionInto(track, clip);
-                  const keyTimes =
-                    track.kind === 'video'
-                      ? [
-                          ...new Set(
-                            ['x', 'y', 'scale', 'rotation', 'opacity'].flatMap((p) =>
-                              (localKeyframes(c, p) || []).map((k) => k.local.toFixed(3)),
-                            ),
-                          ),
-                        ]
-                      : [];
-                  return (
-                    <div
-                      key={clip.id}
-                      className={`clip clip-${track.kind} ${selectedId === clip.id && !selectedTransition ? 'selected' : ''} ${media?.missing ? 'missing' : ''}`}
-                      style={{
-                        left: c.start * zoom,
-                        width: Math.max(4, clipDur(c) * zoom),
-                        backgroundImage: showWave
-                          ? `url("${mediaUrl(media.waveform)}")`
-                          : media?.thumb
-                            ? `url("${mediaUrl(media.thumb)}")`
-                            : undefined,
-                        ...(showWave && {
-                          backgroundSize: `${(media.duration / speed) * zoom}px 100%`,
-                          backgroundPosition: `${(-c.in / speed) * zoom}px 0`,
-                          backgroundRepeat: 'no-repeat',
-                        }),
-                      }}
-                      onPointerDown={(e) => startClipDrag(e, track, clip)}
-                      onDragOver={(e) => {
-                        const types = e.dataTransfer.types;
-                        if (
-                          (track === mainTrack && types.includes(TRANSITION_DRAG_TYPE)) ||
-                          (track.kind === 'video' && types.includes(LOOK_DRAG_TYPE))
-                        ) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }
-                      }}
-                      onDrop={(e) => dropOnClip(e, track, clip)}
-                      title={`${label}${media?.missing ? ' (file missing)' : ''}\n${formatTime(c.start)} – ${formatTime(clipEnd(c))}`}
-                    >
-                      {c.fadeIn > 0 && (
-                        <div className="fade fade-in" style={{ width: c.fadeIn * zoom }} />
-                      )}
-                      {c.fadeOut > 0 && (
-                        <div className="fade fade-out" style={{ width: c.fadeOut * zoom }} />
-                      )}
-                      {clipAnimations(c).map(({ dir, duration: d, anim }) => (
-                        <div
-                          key={dir}
-                          className={`anim-mark anim-${dir}`}
-                          style={{ width: d * zoom }}
-                          title={`${dir === 'in' ? 'In' : 'Out'}: ${anim.name}`}
-                        />
-                      ))}
-                      {tr && (
-                        <div
-                          className={`transition-marker ${selectedTransition === clip.id ? 'selected' : ''}`}
-                          style={{ width: Math.max(14, tr.duration * zoom) }}
-                          title={`${TRANSITIONS.find((t) => t.id === tr.type)?.name} (${tr.duration.toFixed(2)}s)${tr.prev ? '' : ' from black'}. Click to select, ⌫ to remove.`}
-                          onPointerDown={(e) => {
-                            e.stopPropagation();
-                            selectTransition(clip);
-                          }}
-                        >
-                          ⧓
-                          {selectedTransition === clip.id && (
-                            <button
-                              className="marker-remove"
-                              title="Remove transition"
-                              onPointerDown={(e) => {
-                                e.stopPropagation();
-                                dispatch({
-                                  type: 'SET_TRANSITION',
-                                  clipId: clip.id,
-                                  transition: null,
-                                });
-                                setSelectedTransition(null);
-                              }}
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {keyTimes.map((k) => (
-                        <div key={k} className="kf-diamond" style={{ left: +k * zoom }} />
-                      ))}
-                      <span className="clip-label">
-                        {c.muted ? '🔇 ' : ''}
-                        {c.audioDetached ? '⇣ ' : ''}
-                        {speed !== 1 ? `${+speed.toFixed(2)}× ` : ''}
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-
-          <div className="playhead" style={{ left: LABEL_WIDTH + time * zoom }} />
+            🗑 {selectedTransition ? 'Remove transition' : 'Delete'}
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'ADD_TITLE', start: time })}
+            title="Add a title at the playhead"
+          >
+            T+ Title
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'DETACH_AUDIO', clipId: selectedId, newId: uid() })}
+            disabled={!canDetach}
+            title="Move the selected video's sound to an audio track"
+          >
+            ♪ Detach audio
+          </button>
+          <span className="divider" />
+          <button
+            className={`toggle ${project.settings.magnet ? 'on' : ''}`}
+            onClick={() =>
+              dispatch({ type: 'SET_SETTINGS', patch: { magnet: !project.settings.magnet } })
+            }
+            title={
+              project.settings.magnet
+                ? 'Magnet on: the main track closes gaps automatically when you delete, cut or trim. Click to turn off.'
+                : 'Magnet off: deleting leaves gaps. Click to turn on.'
+            }
+          >
+            🧲 Magnet
+          </button>
+          <span className="divider" />
+          <button
+            onClick={() => dispatch({ type: 'ADD_VIDEO_TRACK' })}
+            title="Add a video track above the others (picture in picture, overlays)"
+          >
+            + Video track
+          </button>
+          <button onClick={() => dispatch({ type: 'ADD_AUDIO_TRACK' })} title="Add an audio track">
+            + Audio track
+          </button>
+          <div className="spacer" />
+          <span className="muted small">Zoom</span>
+          <input
+            type="range"
+            min="10"
+            max="300"
+            value={zoom}
+            onChange={(e) => setZoom(+e.target.value)}
+          />
         </div>
+      )}
+
+      <div className="timeline-viewport">
+        <div className="timeline-scroll" ref={scrollRef} onScroll={onScroll}>
+          <div
+            className="timeline-content"
+            style={{ width: contentWidth + OFFSET, '--label-w': `${LABEL_WIDTH}px` }}
+          >
+            <div
+              className="ruler-row"
+              onPointerDown={(e) => {
+                if (mobile) return;
+                setTime(timeAt(e.clientX));
+                setScrubbing(true);
+              }}
+            >
+              <div className="track-label sticky" />
+              <Ruler width={contentWidth} zoom={zoom} offset={OFFSET - LABEL_WIDTH} />
+            </div>
+
+            {project.tracks.map((track) => (
+              <div
+                key={track.id}
+                className={`track-row kind-${track.kind} ${track === mainTrack ? 'is-main' : ''} ${track.hidden ? 'is-hidden' : ''} ${track.muted ? 'is-muted' : ''}`}
+                ref={(el) =>
+                  el ? rowRefs.current.set(track.id, el) : rowRefs.current.delete(track.id)
+                }
+              >
+                {mobile ? (
+                  <CompactTrackHeader track={track} dispatch={dispatch} />
+                ) : (
+                  <TrackHeader project={project} track={track} dispatch={dispatch} />
+                )}
+                <div
+                  className="track-lane"
+                  style={{ width: contentWidth, marginLeft: OFFSET - LABEL_WIDTH }}
+                  onPointerDown={(e) => {
+                    // With a finger, dragging the empty lane scrolls the timeline; a tap moves the playhead.
+                    if (e.pointerType === 'touch') {
+                      tapRef.current = { x: e.clientX, y: e.clientY };
+                      return;
+                    }
+                    setSelectedId(null);
+                    setSelectedTransition(null);
+                    setTime(timeAt(e.clientX));
+                    setScrubbing(true);
+                  }}
+                  onPointerUp={(e) => {
+                    const tap = tapRef.current;
+                    tapRef.current = null;
+                    if (!tap || Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) return;
+                    setSelectedId(null);
+                    setSelectedTransition(null);
+                    if (!mobile) setTime(timeAt(e.clientX));
+                  }}
+                  onDragOver={(e) => {
+                    if (accepts(e, track)) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                    }
+                  }}
+                  onDrop={(e) => onTrackDrop(e, track)}
+                >
+                  {rowClips(track).map((clip) => {
+                    const c = drag?.clipId === clip.id ? drag.current : clip;
+                    const media = project.media[c.mediaId];
+                    const label = track.kind === 'text' ? c.text : media?.name;
+                    const speed = clipSpeed(c);
+                    const showWave = track.kind === 'audio' && media?.waveform;
+                    const tr = track === mainTrack && !drag && transitionInto(track, clip);
+                    const keyTimes =
+                      track.kind === 'video'
+                        ? [
+                            ...new Set(
+                              ['x', 'y', 'scale', 'rotation', 'opacity'].flatMap((p) =>
+                                (localKeyframes(c, p) || []).map((k) => k.local.toFixed(3)),
+                              ),
+                            ),
+                          ]
+                        : [];
+                    return (
+                      <div
+                        key={clip.id}
+                        className={`clip clip-${track.kind} ${selectedId === clip.id && !selectedTransition ? 'selected' : ''} ${media?.missing ? 'missing' : ''}`}
+                        style={{
+                          left: c.start * zoom,
+                          width: Math.max(4, clipDur(c) * zoom),
+                          backgroundImage: showWave
+                            ? `url("${mediaUrl(media.waveform)}")`
+                            : media?.thumb
+                              ? `url("${mediaUrl(media.thumb)}")`
+                              : undefined,
+                          ...(showWave && {
+                            backgroundSize: `${(media.duration / speed) * zoom}px 100%`,
+                            backgroundPosition: `${(-c.in / speed) * zoom}px 0`,
+                            backgroundRepeat: 'no-repeat',
+                          }),
+                        }}
+                        onPointerDown={(e) =>
+                          mobile ? pressClip(e, track, clip) : startClipDrag(e, track, clip)
+                        }
+                        onPointerMove={mobile ? movePress : undefined}
+                        onPointerUp={mobile ? () => releasePress(clip) : undefined}
+                        onPointerCancel={mobile ? () => releasePress(clip) : undefined}
+                        onDragOver={(e) => {
+                          const types = e.dataTransfer.types;
+                          if (
+                            (track === mainTrack && types.includes(TRANSITION_DRAG_TYPE)) ||
+                            (track.kind === 'video' && types.includes(LOOK_DRAG_TYPE))
+                          ) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }
+                        }}
+                        onDrop={(e) => dropOnClip(e, track, clip)}
+                        title={`${label}${media?.missing ? ' (file missing)' : ''}\n${formatTime(c.start)} – ${formatTime(clipEnd(c))}`}
+                      >
+                        {c.fadeIn > 0 && (
+                          <div className="fade fade-in" style={{ width: c.fadeIn * zoom }} />
+                        )}
+                        {c.fadeOut > 0 && (
+                          <div className="fade fade-out" style={{ width: c.fadeOut * zoom }} />
+                        )}
+                        {clipAnimations(c).map(({ dir, duration: d, anim }) => (
+                          <div
+                            key={dir}
+                            className={`anim-mark anim-${dir}`}
+                            style={{ width: d * zoom }}
+                            title={`${dir === 'in' ? 'In' : 'Out'}: ${anim.name}`}
+                          />
+                        ))}
+                        {tr && (
+                          <div
+                            className={`transition-marker ${selectedTransition === clip.id ? 'selected' : ''}`}
+                            style={{ width: Math.max(14, tr.duration * zoom) }}
+                            title={`${TRANSITIONS.find((t) => t.id === tr.type)?.name} (${tr.duration.toFixed(2)}s)${tr.prev ? '' : ' from black'}. Click to select, ⌫ to remove.`}
+                            onPointerDown={(e) => {
+                              e.stopPropagation();
+                              selectTransition(clip);
+                            }}
+                          >
+                            ⧓
+                            {selectedTransition === clip.id && (
+                              <button
+                                className="marker-remove"
+                                title="Remove transition"
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  dispatch({
+                                    type: 'SET_TRANSITION',
+                                    clipId: clip.id,
+                                    transition: null,
+                                  });
+                                  setSelectedTransition(null);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {keyTimes.map((k) => (
+                          <div key={k} className="kf-diamond" style={{ left: +k * zoom }} />
+                        ))}
+                        <span className="clip-label">
+                          {c.muted ? '🔇 ' : ''}
+                          {c.audioDetached ? '⇣ ' : ''}
+                          {hasRamp(c) ? 'Ramp · ' : speed !== 1 ? `${+speed.toFixed(2)}× ` : ''}
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {mobile && track === mainTrack && (
+                    <MainTrackExtras
+                      track={track}
+                      zoom={zoom}
+                      hidden={!!drag || (!!selectedId && !selectedTransition)}
+                      selectedTransition={selectedTransition}
+                      onTransition={selectTransition}
+                      onAddMedia={onAddMedia}
+                    />
+                  )}
+                  {mobile &&
+                    (() => {
+                      const sel = rowClips(track).find((c) => c.id === selectedId);
+                      if (!sel || selectedTransition || (drag && drag.mode === 'move')) return null;
+                      const c = drag?.clipId === sel.id ? drag.current : sel;
+                      return ['left', 'right'].map((side) => (
+                        <div
+                          key={side}
+                          className={`trim-handle trim-${side}`}
+                          style={{
+                            left: side === 'left' ? c.start * zoom : clipEnd(c) * zoom,
+                          }}
+                          onPointerDown={(e) => startClipDrag(e, track, sel, side)}
+                        >
+                          <Icon name="back" size={14} className={side === 'right' ? 'flip' : ''} />
+                        </div>
+                      ));
+                    })()}
+                </div>
+              </div>
+            ))}
+
+            {!mobile && <div className="playhead" style={{ left: LABEL_WIDTH + time * zoom }} />}
+          </div>
+        </div>
+        {mobile && <div className="center-playhead" />}
       </div>
     </section>
+  );
+}
+
+// Touch layout extras on the main track: a join button between butted clips to add a
+// transition, and a "+" after the last clip to add more media.
+function MainTrackExtras({ track, zoom, hidden, selectedTransition, onTransition, onAddMedia }) {
+  if (hidden) return null;
+  const clips = [...track.clips].sort((a, b) => a.start - b.start);
+  const end = clips.reduce((m, c) => Math.max(m, clipEnd(c)), 0);
+  return (
+    <>
+      {clips.slice(1).map((clip, i) => {
+        if (Math.abs(clipEnd(clips[i]) - clip.start) > 0.001) return null;
+        return (
+          <button
+            key={clip.id}
+            className={`join-btn ${clip.transition ? 'has' : ''} ${selectedTransition === clip.id ? 'active' : ''}`}
+            style={{ left: clip.start * zoom }}
+            title={clip.transition ? 'Edit transition' : 'Add transition'}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onTransition(clip)}
+          >
+            <Icon name={clip.transition ? 'transition' : 'plus'} size={12} />
+          </button>
+        );
+      })}
+      {onAddMedia && (
+        <button
+          className="lane-add"
+          style={{ left: end * zoom + 12 }}
+          title="Add media"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={onAddMedia}
+        >
+          <Icon name="plus" size={20} />
+        </button>
+      )}
+    </>
   );
 }

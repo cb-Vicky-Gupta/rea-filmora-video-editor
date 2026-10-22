@@ -118,12 +118,13 @@ export class MediaPool {
     if (!item.preload) setAudio(el, item.audio);
     else if (graphs.has(el)) setAudio(el, null);
 
-    const rate = item.rate || 1;
+    // Speed ramps change the rate every frame; rounding avoids needless updates.
+    const rate = Math.round((item.rate || 1) * 100) / 100;
     if (el.playbackRate !== rate) el.playbackRate = rate;
     const run = playing && !item.preload && !item.frozen;
     const drift = Math.abs(el.currentTime - item.src);
     if (run) {
-      if (drift > 0.3 * rate && !el.seeking) el.currentTime = item.src;
+      if (drift > Math.max(0.12, 0.3 * rate) && !el.seeking) el.currentTime = item.src;
       if (el.paused) el.play().catch(() => {});
     } else {
       if (!el.paused) el.pause();

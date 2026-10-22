@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RAMP_PRESETS,
   animValue,
   clipDur,
+  clipEnd,
+  localTimeOf,
+  sourceTime,
+  speedAt,
+  splitRamp,
   effectiveFades,
   layerProps,
   mainVideoTrack,
@@ -26,6 +32,64 @@ describe('timing', () => {
   it('scales clip length by speed', () => {
     expect(clipDur(clip({ out: 4, speed: 2 }))).toBe(2);
     expect(clipDur(clip({ in: 1, out: 4, speed: 0.5 }))).toBe(6);
+  });
+});
+
+describe('speed ramps', () => {
+  const ramped = (id, patch) =>
+    clip({ in: 2, out: 8, ramp: RAMP_PRESETS.find((p) => p.id === id), ...patch });
+
+  it('behaves like a constant speed when the curve is flat', () => {
+    const c = clip({
+      out: 6,
+      ramp: {
+        id: 'custom',
+        points: [
+          { x: 0, s: 2 },
+          { x: 1, s: 2 },
+        ],
+      },
+    });
+    expect(clipDur(c)).toBeCloseTo(3, 9);
+    expect(sourceTime(c, 1.5)).toBeCloseTo(3, 9);
+    expect(speedAt(c, 1)).toBeCloseTo(2, 9);
+  });
+
+  it('maps timeline and source time consistently', () => {
+    for (const p of RAMP_PRESETS) {
+      const c = ramped(p.id, { start: 3 });
+      expect(sourceTime(c, c.start)).toBeCloseTo(c.in, 6);
+      expect(sourceTime(c, clipEnd(c))).toBeCloseTo(c.out, 6);
+      for (let k = 0; k <= 20; k++) {
+        const t = c.start + (clipDur(c) * k) / 20;
+        expect(c.start + localTimeOf(c, sourceTime(c, t))).toBeCloseTo(t, 6);
+      }
+    }
+  });
+
+  it('plays slow parts for longer and fast parts for shorter', () => {
+    const c = ramped('hero');
+    // The slow middle (0.25x) takes up more of the timeline than of the source.
+    const mid = clip({ ...c });
+    const t0 = localTimeOf(mid, mid.in + 0.48 * 6);
+    const t1 = localTimeOf(mid, mid.in + 0.58 * 6);
+    expect(t1 - t0).toBeCloseTo((0.1 * 6) / 0.25, 6);
+    expect(speedAt(c, c.start + t0 + 0.01)).toBeCloseTo(0.25, 2);
+  });
+
+  it('keeps timing intact when split', () => {
+    const c = ramped('montage');
+    const at = c.start + clipDur(c) * 0.4;
+    const cut = sourceTime(c, at);
+    const [l, r] = splitRamp(c.ramp, (cut - c.in) / (c.out - c.in));
+    const left = { ...c, out: cut, ramp: l };
+    const right = { ...c, start: at, in: cut, ramp: r };
+    expect(clipEnd(left)).toBeCloseTo(at, 6);
+    expect(clipDur(left) + clipDur(right)).toBeCloseTo(clipDur(c), 6);
+    for (const t of [at - 1, at - 0.2, at + 0.3, at + 2]) {
+      const part = t < at ? left : right;
+      expect(sourceTime(part, t)).toBeCloseTo(sourceTime(c, t), 6);
+    }
   });
 });
 

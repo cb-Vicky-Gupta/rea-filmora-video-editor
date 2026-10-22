@@ -8,7 +8,8 @@ import {
   sanitizeFileName,
 } from './export.mjs';
 import { parseProbe } from './probe.mjs';
-import { buildExportArgs } from './render.mjs';
+import { buildExportArgs, rampAudioPieces } from './render.mjs';
+import { RAMP_PRESETS, clipDur } from './model.mjs';
 
 const project = {
   settings: { width: 1920, height: 1080, fps: 30 },
@@ -90,6 +91,35 @@ describe('export graph', () => {
     expect(() => buildExportArgs(project, '/out/v.mp4', '/tmp', {}, io)).toThrow(
       /Media file not found/,
     );
+  });
+});
+
+describe('speed ramp export', () => {
+  const ramp = RAMP_PRESETS.find((p) => p.id === 'montage');
+  const rampedProject = {
+    ...project,
+    tracks: project.tracks.map((t) =>
+      t.id === 'v1' ? { ...t, clips: [{ ...t.clips[0], out: 4, ramp }] } : t,
+    ),
+  };
+
+  it('retimes video with a setpts curve and splits the audio into tempo pieces', () => {
+    const io = memoryIo();
+    buildExportArgs(rampedProject, '/out/v.mp4', '/tmp', {}, io);
+    const graph = io.files.get('/tmp/graph.txt');
+    expect(graph).toMatch(/setpts='4\*\(if\(lt\(/);
+    expect(graph).toContain('log(1+');
+    expect(graph).toMatch(/asplit=\d+/);
+    expect(graph).toMatch(/concat=n=\d+:v=0:a=1/);
+  });
+
+  it('cuts audio pieces that add up to the clip length on the timeline', () => {
+    const c = { id: 'c', start: 0, in: 1, out: 7, ramp };
+    const pieces = rampAudioPieces(c);
+    expect(pieces[0].from).toBe(0);
+    expect(pieces.at(-1).to).toBeCloseTo(6, 9);
+    const timeline = pieces.reduce((sum, p) => sum + (p.to - p.from) / p.tempo, 0);
+    expect(timeline).toBeCloseTo(clipDur(c), 6);
   });
 });
 

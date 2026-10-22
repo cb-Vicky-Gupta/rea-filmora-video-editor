@@ -16,6 +16,20 @@ import Preview from './components/Preview.jsx';
 import Inspector from './components/Inspector.jsx';
 import Timeline from './components/Timeline.jsx';
 import ExportDialog from './components/ExportDialog.jsx';
+import MobileEditor from './components/MobileEditor.jsx';
+
+// Android always gets the touch layout; elsewhere it follows the window width.
+const MOBILE_QUERY = '(max-width: 820px)';
+function useMobileLayout() {
+  const [narrow, setNarrow] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return window.api?.platform === 'android' || narrow;
+}
 
 export default function App() {
   const [history, dispatch] = useReducer(historyReducer, null, () => ({
@@ -35,8 +49,7 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [notice, setNotice] = useState(null);
   const [inspectorTab, setInspectorTab] = useState('video');
-  // Phones show one side panel at a time below the preview.
-  const [mobilePanel, setMobilePanel] = useState('library');
+  const mobile = useMobileLayout();
 
   const timeRef = useRef(time);
   timeRef.current = time;
@@ -166,17 +179,61 @@ export default function App() {
   };
 
   const selected = selectedId ? findClip(project, selectedId) : null;
-  useEffect(() => {
-    if (selectedId) setMobilePanel('edit');
-  }, [selectedId]);
   // Only treat the transition as selected while the clip still has one.
   const transitionSel =
     selectedTransition && findClip(project, selectedTransition)?.clip.transition
       ? selectedTransition
       : null;
 
+  const overlays = (
+    <>
+      {exportOpen && (
+        <ExportDialog
+          project={project}
+          duration={duration}
+          time={time}
+          onClose={() => setExportOpen(false)}
+        />
+      )}
+      {notice && <div className="toast">{notice}</div>}
+    </>
+  );
+
+  if (mobile) {
+    return (
+      <>
+        <MobileEditor
+          project={project}
+          history={history}
+          dispatch={dispatch}
+          time={time}
+          setTime={setTime}
+          playing={playing}
+          setPlaying={setPlaying}
+          togglePlay={togglePlay}
+          duration={duration}
+          selected={selected}
+          setSelectedId={setSelectedId}
+          selectedTransition={transitionSel}
+          setSelectedTransition={setSelectedTransition}
+          zoom={zoom}
+          setZoom={setZoom}
+          onSplit={splitAtPlayhead}
+          onDelete={deleteSelected}
+          onKeyframe={keyframeAll}
+          onImported={addMedia}
+          onOpenProject={openProject}
+          onSaveProject={saveProject}
+          onExport={() => setExportOpen(true)}
+          notify={notify}
+        />
+        {overlays}
+      </>
+    );
+  }
+
   return (
-    <div className={`app platform-${window.api?.platform || 'web'}`} data-panel={mobilePanel}>
+    <div className={`app platform-${window.api?.platform || 'web'}`}>
       <header className="titlebar">
         <div className="brand">ReaCut</div>
         <div className="titlebar-actions">
@@ -220,21 +277,6 @@ export default function App() {
           onTogglePlay={togglePlay}
           setTime={setTime}
         />
-        <nav className="mobile-tabs">
-          {[
-            ['library', 'Library'],
-            ['edit', selected ? 'Edit clip' : 'Project'],
-            ['none', 'Hide panel'],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              className={mobilePanel === id ? 'active' : ''}
-              onClick={() => setMobilePanel(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
         <Inspector
           project={project}
           selected={selected}
@@ -265,15 +307,7 @@ export default function App() {
         onOpenTab={setInspectorTab}
       />
 
-      {exportOpen && (
-        <ExportDialog
-          project={project}
-          duration={duration}
-          time={time}
-          onClose={() => setExportOpen(false)}
-        />
-      )}
-      {notice && <div className="toast">{notice}</div>}
+      {overlays}
     </div>
   );
 }

@@ -1,5 +1,14 @@
 // Timeline model, reducer and undo history. Timing rules live in shared/model.mjs.
-import { EPS, MIN_CLIP, clipDur, clipEnd, clipSpeed, mainVideoTrack } from '../shared/model.mjs';
+import {
+  EPS,
+  MIN_CLIP,
+  clipDur,
+  clipEnd,
+  hasRamp,
+  mainVideoTrack,
+  sourceTime,
+  splitRamp,
+} from '../shared/model.mjs';
 
 export * from '../shared/model.mjs';
 
@@ -219,7 +228,7 @@ function projectReducer(project, action) {
       const { clip } = found;
       const offset = action.time - clip.start;
       if (offset < MIN_CLIP || clipDur(clip) - offset < MIN_CLIP) return project;
-      const cut = clip.in + offset * clipSpeed(clip);
+      const cut = sourceTime(clip, action.time);
       const left = { ...clip, out: cut, fadeOut: 0 };
       const right = {
         ...clip,
@@ -229,18 +238,26 @@ function projectReducer(project, action) {
         fadeIn: 0,
         transition: undefined,
       };
+      // Each half keeps its part of the speed curve.
+      if (hasRamp(clip))
+        [left.ramp, right.ramp] = splitRamp(clip.ramp, (cut - clip.in) / (clip.out - clip.in));
       return mapTracks(project, (t) => ({
         ...t,
         clips: t.clips.flatMap((c) => (c.id === clip.id ? [left, right] : [c])),
       }));
     }
-    case 'SET_SPEED': {
+    case 'SET_SPEED':
+    case 'SET_RAMP': {
       // Changing speed changes the clip's length; later clips on the track ripple to follow.
+      // A constant speed replaces any ramp; a null ramp goes back to the constant speed.
       const found = findClip(project, action.clipId);
       if (!found) return project;
       const { track, clip } = found;
       const oldEnd = clipEnd(clip);
-      const updated = { ...clip, speed: action.speed };
+      const updated =
+        action.type === 'SET_SPEED'
+          ? { ...clip, speed: action.speed, ramp: undefined }
+          : { ...clip, ramp: action.ramp || undefined };
       const delta = clipEnd(updated) - oldEnd;
       return mapTracks(project, (t) =>
         t.id !== track.id
@@ -309,7 +326,8 @@ function projectReducer(project, action) {
         start: clip.start,
         in: clip.in,
         out: clip.out,
-        speed: clipSpeed(clip),
+        speed: clip.speed || 1,
+        ramp: clip.ramp,
         volume: clip.volume,
         muted: clip.muted,
         fadeIn: clip.fadeIn,

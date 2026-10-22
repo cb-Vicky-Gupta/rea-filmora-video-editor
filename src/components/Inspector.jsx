@@ -19,6 +19,7 @@ import {
   transitionInto,
   uid,
 } from '../project.js';
+import SpeedControls from './SpeedRamp.jsx';
 import { DEFAULT_GRADE, LOOKS, clipGrade, makeGradeFn, parseCube } from '../../shared/grade.mjs';
 
 const RESOLUTIONS = [
@@ -194,12 +195,20 @@ const PIP_PRESETS = [
   { name: 'Right half', transform: { x: 0.75, y: 0.5, scale: 0.5 } },
 ];
 
-function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
+export function VideoTab({
+  project,
+  clip,
+  media,
+  track,
+  time,
+  setTime,
+  dispatch,
+  showSpeed = true,
+}) {
   const update = (patch) => dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch });
   const isOverlay = track !== mainVideoTrack(project);
   const dur = clipDur(clip);
   const maxFade = Math.max(0, Math.floor(dur * 10) / 20);
-  const speed = clipSpeed(clip);
   const hasKeys = Object.values(clip.keyframes || {}).some((l) => l.length);
 
   return (
@@ -251,30 +260,10 @@ function VideoTab({ project, clip, media, track, time, setTime, dispatch }) {
         />
       ))}
 
-      {media?.kind === 'video' && (
+      {showSpeed && media?.kind === 'video' && (
         <>
           <div className="section-title">Speed</div>
-          <Field label="Playback speed">
-            <Slider
-              value={speed}
-              min={0.25}
-              max={4}
-              step={0.05}
-              onChange={(v) => dispatch({ type: 'SET_SPEED', clipId: clip.id, speed: v })}
-              format={(v) => `${v.toFixed(2)}×`}
-            />
-          </Field>
-          <div className="chip-row">
-            {[0.25, 0.5, 1, 1.5, 2, 4].map((s) => (
-              <button
-                key={s}
-                className={`chip ${Math.abs(s - speed) < 0.001 ? 'active' : ''}`}
-                onClick={() => dispatch({ type: 'SET_SPEED', clipId: clip.id, speed: s })}
-              >
-                {s}×
-              </button>
-            ))}
-          </div>
+          <SpeedControls key={clip.id} clip={clip} media={media} time={time} dispatch={dispatch} />
         </>
       )}
 
@@ -378,7 +367,7 @@ const sameGrade = (a, b) =>
   JSON.stringify({ ...a, lut: null, lutIntensity: 1 }) ===
   JSON.stringify({ ...b, lut: null, lutIntensity: 1 });
 
-function ColorTab({ clip, media, dispatch, notify }) {
+export function ColorTab({ clip, media, dispatch, notify }) {
   const grade = clipGrade(clip);
   const set = (patch) =>
     dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch: { grade: { ...grade, ...patch } } });
@@ -516,7 +505,7 @@ function ColorTab({ clip, media, dispatch, notify }) {
 
 // ---------------- Audio ----------------
 
-function AudioTab({ clip, media, track, dispatch }) {
+export function AudioTab({ clip, media, track, dispatch }) {
   const update = (patch) => dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch });
   const fx = clipAudio(clip);
   const setFx = (patch) => update({ audio: { ...fx, ...patch } });
@@ -658,7 +647,7 @@ function AudioTab({ clip, media, track, dispatch }) {
 
 // ---------------- Transition ----------------
 
-function TransitionTab({ clip, track, dispatch }) {
+export function TransitionTab({ clip, track, dispatch }) {
   const hasPrev = track.clips.some((c) => c !== clip && Math.abs(clipEnd(c) - clip.start) < 0.001);
   const current = clip.transition;
   const maxDur = Math.max(0.1, Math.min(3, clipDur(clip)));
@@ -713,7 +702,7 @@ function TransitionTab({ clip, track, dispatch }) {
 
 // ---------------- Animation ----------------
 
-function AnimationTab({ clip, isText, dispatch }) {
+export function AnimationTab({ clip, isText, dispatch }) {
   const list = ANIMATIONS.filter((a) => !isText || a.text);
   const maxDur = Math.max(0.1, Math.min(3, clipDur(clip)));
   return (
@@ -771,42 +760,50 @@ function AnimationTab({ clip, isText, dispatch }) {
 
 // ---------------- Inspector ----------------
 
-function ProjectSettings({ project, dispatch }) {
+export function ProjectFields({ project, dispatch }) {
   const { width, height, fps } = project.settings;
   const current = RESOLUTIONS.findIndex((r) => r.width === width && r.height === height);
+  return (
+    <>
+      <Field label="Resolution">
+        <select
+          value={current}
+          onChange={(e) => {
+            const r = RESOLUTIONS[+e.target.value];
+            dispatch({ type: 'SET_SETTINGS', patch: { width: r.width, height: r.height } });
+          }}
+        >
+          {RESOLUTIONS.map((r, i) => (
+            <option key={r.label} value={i}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Frame rate">
+        <select
+          value={fps}
+          onChange={(e) => dispatch({ type: 'SET_SETTINGS', patch: { fps: +e.target.value } })}
+        >
+          {[24, 25, 30, 50, 60].map((f) => (
+            <option key={f} value={f}>
+              {f} fps
+            </option>
+          ))}
+        </select>
+      </Field>
+    </>
+  );
+}
+
+function ProjectSettings({ project, dispatch }) {
   return (
     <section className="panel inspector">
       <div className="panel-header">
         <span>Project</span>
       </div>
       <div className="inspector-body">
-        <Field label="Resolution">
-          <select
-            value={current}
-            onChange={(e) => {
-              const r = RESOLUTIONS[+e.target.value];
-              dispatch({ type: 'SET_SETTINGS', patch: { width: r.width, height: r.height } });
-            }}
-          >
-            {RESOLUTIONS.map((r, i) => (
-              <option key={r.label} value={i}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Frame rate">
-          <select
-            value={fps}
-            onChange={(e) => dispatch({ type: 'SET_SETTINGS', patch: { fps: +e.target.value } })}
-          >
-            {[24, 25, 30, 50, 60].map((f) => (
-              <option key={f} value={f}>
-                {f} fps
-              </option>
-            ))}
-          </select>
-        </Field>
+        <ProjectFields project={project} dispatch={dispatch} />
         <div className="hint">
           Select a clip on the timeline to edit it.
           <ul>
@@ -835,7 +832,7 @@ function ProjectSettings({ project, dispatch }) {
   );
 }
 
-function TitleTab({ clip, dispatch }) {
+export function TitleTab({ clip, dispatch }) {
   const update = (patch) => dispatch({ type: 'UPDATE_CLIP', clipId: clip.id, patch });
   const dur = clipDur(clip);
   return (
