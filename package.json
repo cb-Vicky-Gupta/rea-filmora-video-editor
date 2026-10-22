@@ -36,9 +36,9 @@
   },
   "private": true,
   "dependencies": {
-    "@capacitor/android": "8.5.2",
-    "@capacitor/core": "8.5.2",
-    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
     "@capacitor/share": "8.0.3",
     "@ffmpeg/core": "0.12.10",
     "@ffmpeg/ffmpeg": "0.12.15",
@@ -47,7 +47,7 @@
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.2",
+    "@capacitor/cli": "8.5.3",
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^10.0.6",
     "electron": "^45.0.0",
