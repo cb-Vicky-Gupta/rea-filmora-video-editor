@@ -1,7 +1,7 @@
 {
   "name": "reacut",
   "productName": "ReaCut",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ReaCut: a video editor for macOS, Windows and Android",
   "type": "module",
   "main": "electron/main.cjs",

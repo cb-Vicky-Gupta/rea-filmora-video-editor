@@ -511,6 +511,13 @@ export default function Timeline({
             T+ Title
           </button>
           <button
+            onClick={() => onOpenTab('speed')}
+            disabled={selectedMedia?.kind !== 'video' || !!selectedTransition}
+            title="Speed and speed ramp for the selected video clip"
+          >
+            ⏱ Speed
+          </button>
+          <button
             onClick={() => dispatch({ type: 'DETACH_AUDIO', clipId: selectedId, newId: uid() })}
             disabled={!canDetach}
             title="Move the selected video's sound to an audio track"

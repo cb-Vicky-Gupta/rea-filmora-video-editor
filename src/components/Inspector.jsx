@@ -924,6 +924,7 @@ export default function Inspector({
   else {
     tabs = [
       ['video', media?.kind === 'image' ? 'Image' : 'Video'],
+      ...(media?.kind === 'video' ? [['speed', 'Speed']] : []),
       ['color', 'Color'],
       ['animation', 'Animation'],
     ];
@@ -965,7 +966,11 @@ export default function Inspector({
             time={time}
             setTime={setTime}
             dispatch={dispatch}
+            showSpeed={false}
           />
+        )}
+        {active === 'speed' && (
+          <SpeedControls key={clip.id} clip={clip} media={media} time={time} dispatch={dispatch} />
         )}
         {active === 'color' && (
           <ColorTab clip={clip} media={media} dispatch={dispatch} notify={notify} />
